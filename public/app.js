@@ -15,6 +15,7 @@ const els = {
   minApr: document.getElementById('minApr'),
   minPositiveRatio: document.getElementById('minPositiveRatio'),
   minPeriods: document.getElementById('minPeriods'),
+  maxRank: document.getElementById('maxRank'),
   noNegatives: document.getElementById('noNegatives'),
   onlyChecked: document.getElementById('onlyChecked'),
   onlyMatch: document.getElementById('onlyMatch'),
@@ -54,6 +55,8 @@ function rowMatchesStrategy(row) {
   if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
   if (row.periods < minPeriods) return false;
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
+  const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
+  if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
   return true;
 }
 
@@ -103,6 +106,7 @@ function render() {
     tr.innerHTML = `
       <td>${row.exchangeLabel}</td>
       <td><strong>${row.baseAsset}</strong></td>
+      <td>${row.marketCapRank ?? '—'}</td>
       <td class="muted">${row.symbol}</td>
       <td class="${rateClass}">${fmtPct(row.fundingRate)}</td>
       <td>${row.intervalHours ?? '—'}</td>
@@ -157,6 +161,7 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.minApr,
   els.minPositiveRatio,
   els.minPeriods,
+  els.maxRank,
   els.noNegatives,
   els.onlyChecked,
   els.onlyMatch,

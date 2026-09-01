@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const cache = require('./lib/cache');
+const marketcap = require('./lib/marketcap');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,5 +25,13 @@ app.post('/api/refresh', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Funding tracker listening on port ${PORT}`);
-  cache.startAutoRefresh();
+  // Load market-cap ranks first so the very first funding refresh can already
+  // attach them, instead of every row showing "—" until the next cycle.
+  marketcap
+    .refresh()
+    .catch((err) => console.error('Initial CoinGecko rank fetch failed:', err))
+    .finally(() => {
+      marketcap.startAutoRefresh();
+      cache.startAutoRefresh();
+    });
 });

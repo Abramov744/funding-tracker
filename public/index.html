@@ -28,6 +28,7 @@
       <label>Мин. APR % <input type="number" id="minApr" value="10" step="1" /></label>
       <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
       <label>Мин. периодов истории <input type="number" id="minPeriods" value="10" step="1" /></label>
+      <label>Макс. ранг по капитализации <input type="number" id="maxRank" placeholder="напр. 300" /></label>
       <label><input type="checkbox" id="noNegatives" checked /> Без отрицательных в окне</label>
       <label><input type="checkbox" id="onlyChecked" checked /> Только проверенные (есть история)</label>
       <label><input type="checkbox" id="onlyMatch" /> Только подходящие под стратегию</label>
@@ -46,6 +47,7 @@
       <tr>
         <th data-key="exchangeLabel">Биржа</th>
         <th data-key="baseAsset">Монета</th>
+        <th data-key="marketCapRank">Ранг CMC*</th>
         <th data-key="symbol">Символ</th>
         <th data-key="fundingRate">Ставка (период)</th>
         <th data-key="intervalHours">Интервал, ч</th>
@@ -66,6 +68,7 @@
   <footer>
     <p>Данные — публичные market-data API бирж. Инструмент только для мониторинга: приложение не хранит ключи и не открывает позиции.
     Перед входом в стратегию всегда проверяйте вручную ликвидность, наличие спот-пары и реальную комиссию входа/выхода.</p>
+    <p>* Ранг по капитализации берётся из публичного API CoinGecko (официальный CoinMarketCap API требует платной/зарегистрированной подписки с собственным ключом) — по сути то же самое ранжирование монет по капитализации, значения обычно совпадают с CMC или отличаются на несколько позиций.</p>
   </footer>
 
   <script src="app.js"></script>
