@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Funding Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Funding Rate Tracker</h1>
+    <p class="subtitle">Aster · MEXC · Gate.io — поиск монет с устойчивым положительным фандингом для стратегии спот + шорт фьючерс</p>
+  </header>
+
+  <section class="controls">
+    <div class="control-group">
+      <span class="control-label">Биржи</span>
+      <label><input type="checkbox" class="ex-filter" value="aster" checked /> Aster</label>
+      <label><input type="checkbox" class="ex-filter" value="mexc" checked /> MEXC</label>
+      <label><input type="checkbox" class="ex-filter" value="gate" checked /> Gate.io</label>
+    </div>
+
+    <div class="control-group">
+      <label>Поиск монеты <input type="text" id="search" placeholder="напр. BTC" /></label>
+    </div>
+
+    <div class="control-group">
+      <label>Мин. APR % <input type="number" id="minApr" value="10" step="1" /></label>
+      <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
+      <label>Мин. периодов истории <input type="number" id="minPeriods" value="10" step="1" /></label>
+      <label><input type="checkbox" id="noNegatives" checked /> Без отрицательных в окне</label>
+      <label><input type="checkbox" id="onlyChecked" checked /> Только проверенные (есть история)</label>
+      <label><input type="checkbox" id="onlyMatch" /> Только подходящие под стратегию</label>
+    </div>
+
+    <div class="control-group">
+      <button id="refreshBtn">Обновить сейчас</button>
+      <span id="status" class="status"></span>
+    </div>
+  </section>
+
+  <section id="errorBanner" class="error-banner" hidden></section>
+
+  <table id="table">
+    <thead>
+      <tr>
+        <th data-key="exchangeLabel">Биржа</th>
+        <th data-key="baseAsset">Монета</th>
+        <th data-key="symbol">Символ</th>
+        <th data-key="fundingRate">Ставка (период)</th>
+        <th data-key="intervalHours">Интервал, ч</th>
+        <th data-key="aprPct">APR %</th>
+        <th data-key="nextFundingTime">Следующая выплата</th>
+        <th data-key="periods">Периодов</th>
+        <th data-key="positiveRatio">% полож.</th>
+        <th data-key="currentStreak">Стрик +</th>
+        <th data-key="minRate">Мин. ставка</th>
+        <th data-key="avgAprPct">Ср. APR %</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <p id="emptyState" class="empty-state" hidden>Нет строк, подходящих под текущие фильтры.</p>
+
+  <footer>
+    <p>Данные — публичные market-data API бирж. Инструмент только для мониторинга: приложение не хранит ключи и не открывает позиции.
+    Перед входом в стратегию всегда проверяйте вручную ликвидность, наличие спот-пары и реальную комиссию входа/выхода.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

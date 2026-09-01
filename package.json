@@ -1,0 +1,15 @@
+{
+  "name": "funding-tracker",
+  "version": "1.0.0",
+  "description": "Funding rate screener for Aster, MEXC and Gate.io perpetual futures — finds coins with sustained positive funding for spot+short (cash-and-carry) strategy",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
