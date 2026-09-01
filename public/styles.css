@@ -122,6 +122,14 @@ thead th {
 
 thead th:hover { color: var(--text); }
 
+.sort-arrow {
+  display: inline-block;
+  width: 10px;
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: 10px;
+}
+
 tbody td {
   padding: 9px 12px;
   border-top: 1px solid var(--border);

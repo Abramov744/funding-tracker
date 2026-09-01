@@ -90,7 +90,16 @@ function sortRows(rows) {
   });
 }
 
+function updateSortArrows() {
+  document.querySelectorAll('th[data-key]').forEach((th) => {
+    const arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    arrow.textContent = th.dataset.key === state.sortKey ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+  });
+}
+
 function render() {
+  updateSortArrows();
   const rows = sortRows(getFilteredRows());
   els.tbody.innerHTML = '';
   els.emptyState.hidden = rows.length > 0;
@@ -114,7 +123,6 @@ function render() {
       <td class="muted">${fmtRelativeTime(row.nextFundingTime)}</td>
       <td>${row.periods}</td>
       <td>${fmtRatio(row.positiveRatio)}</td>
-      <td>${row.currentStreak}</td>
       <td class="${row.minRate < 0 ? 'negative' : ''}">${fmtPct(row.minRate)}</td>
       <td>${fmtAprPct(row.avgAprPct)}</td>
     `;
