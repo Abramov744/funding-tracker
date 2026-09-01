@@ -37,16 +37,6 @@ function fmtRatio(v) {
   return (v * 100).toFixed(0) + '%';
 }
 
-function fmtRelativeTime(ts) {
-  if (!ts) return '—';
-  const diffMs = ts - Date.now();
-  const mins = Math.round(diffMs / 60000);
-  if (mins <= 0) return 'скоро';
-  if (mins < 60) return `через ${mins} мин`;
-  const hours = (mins / 60).toFixed(1);
-  return `через ${hours} ч`;
-}
-
 function rowMatchesStrategy(row) {
   const minApr = Number(els.minApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
@@ -116,11 +106,8 @@ function render() {
       <td>${row.exchangeLabel}</td>
       <td><strong>${row.baseAsset}</strong></td>
       <td>${row.marketCapRank ?? '—'}</td>
-      <td class="muted">${row.symbol}</td>
       <td class="${rateClass}">${fmtPct(row.fundingRate)}</td>
-      <td>${row.intervalHours ?? '—'}</td>
       <td class="${aprClass}">${fmtAprPct(row.aprPct)}</td>
-      <td class="muted">${fmtRelativeTime(row.nextFundingTime)}</td>
       <td>${row.periods}</td>
       <td>${fmtRatio(row.positiveRatio)}</td>
       <td class="${row.minRate < 0 ? 'negative' : ''}">${fmtPct(row.minRate)}</td>
