@@ -2,7 +2,6 @@ const path = require('path');
 const express = require('express');
 const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
-const spotVenues = require('./lib/spotVenues');
 const exchanges = require('./lib/exchanges');
 
 const app = express();
@@ -62,8 +61,11 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
-// Spot prices for one coin across the top-15 CoinGecko-ranked exchanges + Aster —
-// backs the "where can I buy this on spot" list in the funding-history popup.
+const SPOT_VENUE_LIMIT = 10;
+
+// Spot prices for one coin across the exchanges currently trading it with the
+// most 24h volume — backs the "where can I buy this on spot" list in the
+// funding-history popup.
 app.get('/api/spot-prices', async (req, res) => {
   const symbol = (req.query.symbol || '').toString().trim();
   if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
@@ -79,31 +81,28 @@ app.get('/api/spot-prices', async (req, res) => {
     return res.json(data);
   }
 
-  const exchangeIds = spotVenues.allowedIds();
-
   try {
-    const result = await getJson(
-      `${COINGECKO_BASE}/coins/${coingeckoId}/tickers?exchange_ids=${exchangeIds.join(',')}&include_exchange_logo=false`
-    );
+    const result = await getJson(`${COINGECKO_BASE}/coins/${coingeckoId}/tickers?include_exchange_logo=false`);
     const tickers = (result && result.tickers) || [];
 
-    // Keep one price per exchange — prefer a USDT quote, then USD/USDC/BUSD, then
-    // whatever else is on offer, so e.g. a EUR-only listing doesn't get dropped.
-    const QUOTE_PRIORITY = ['USDT', 'USD', 'USDC', 'BUSD'];
+    // An exchange can list several pairs for the same coin (BTC/USDT, BTC/USDC, ...) —
+    // keep only its most-traded pair, since that's the price/volume that actually
+    // represents "buying this coin on spot there".
     const bestByExchange = new Map();
     for (const t of tickers) {
       const id = t.market && t.market.identifier;
-      if (!id || t.last == null) continue;
-      const rank = QUOTE_PRIORITY.indexOf((t.target || '').toUpperCase());
+      const volumeUsd = t.converted_volume && t.converted_volume.usd;
+      if (!id || t.last == null || volumeUsd == null) continue;
       const existing = bestByExchange.get(id);
-      const existingRank = existing ? QUOTE_PRIORITY.indexOf((existing.target || '').toUpperCase()) : -1;
-      const better = !existing || (rank !== -1 && (existingRank === -1 || rank < existingRank));
-      if (better) bestByExchange.set(id, t);
+      if (!existing || volumeUsd > existing.volumeUsd) {
+        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote: t.target, volumeUsd });
+      }
     }
 
     const venues = Array.from(bestByExchange.entries())
-      .map(([id, t]) => ({ id, name: spotVenues.nameFor(id), price: t.last, quote: t.target }))
-      .sort((a, b) => a.price - b.price);
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => b.volumeUsd - a.volumeUsd)
+      .slice(0, SPOT_VENUE_LIMIT);
 
     const data = { symbol, coingeckoId, venues };
     spotPriceCache.set(cacheKey, { data, expiresAt: Date.now() + SPOT_PRICE_CACHE_MS });
@@ -115,14 +114,13 @@ app.get('/api/spot-prices', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Funding tracker listening on port ${PORT}`);
-  // Load market-cap ranks and the top-exchange list first so the very first
-  // funding refresh and popup opens can already use them.
-  Promise.all([
-    marketcap.refresh().catch((err) => console.error('Initial CoinGecko rank fetch failed:', err)),
-    spotVenues.refresh().catch((err) => console.error('Initial CoinGecko exchange-list fetch failed:', err)),
-  ]).finally(() => {
-    marketcap.startAutoRefresh();
-    spotVenues.startAutoRefresh();
-    cache.startAutoRefresh();
-  });
+  // Load market-cap ranks first so the very first funding refresh can already
+  // attach them, instead of every row showing "—" until the next cycle.
+  marketcap
+    .refresh()
+    .catch((err) => console.error('Initial CoinGecko rank fetch failed:', err))
+    .finally(() => {
+      marketcap.startAutoRefresh();
+      cache.startAutoRefresh();
+    });
 });
