@@ -70,17 +70,29 @@
         <button id="chartClose" class="chart-close" aria-label="Закрыть">×</button>
       </div>
       <p id="chartSubtitle" class="chart-subtitle"></p>
+
+      <div class="chart-price-row">
+        <span class="chart-price-label">Цена на фьючерсе</span>
+        <span id="chartFuturesPrice" class="chart-price-value">—</span>
+      </div>
+
       <div id="chartBody" class="chart-body">
         <canvas id="chartCanvas" width="760" height="320"></canvas>
       </div>
       <p id="chartMessage" class="chart-message" hidden></p>
+
+      <div class="chart-spot-section">
+        <h3>Где купить на споте <span class="muted">(топ-15 бирж по рейтингу CMC* + Aster)</span></h3>
+        <div id="spotList" class="spot-list"></div>
+        <p id="spotMessage" class="chart-message" hidden></p>
+      </div>
     </div>
   </div>
 
   <footer>
     <p>Данные — публичные market-data API бирж. Инструмент только для мониторинга: приложение не хранит ключи и не открывает позиции.
     Перед входом в стратегию всегда проверяйте вручную ликвидность, наличие спот-пары и реальную комиссию входа/выхода.</p>
-    <p>* Ранг по капитализации берётся из публичного API CoinGecko (официальный CoinMarketCap API требует платной/зарегистрированной подписки с собственным ключом) — по сути то же самое ранжирование монет по капитализации, значения обычно совпадают с CMC или отличаются на несколько позиций.</p>
+    <p>* Ранг по капитализации, а также список топ-15 бирж для спот-цен в попапе графика берутся из публичного API CoinGecko (официальный CoinMarketCap API требует платной/зарегистрированной подписки с собственным ключом) — по сути то же самое ранжирование монет/бирж, значения обычно совпадают с CMC или отличаются на несколько позиций.</p>
   </footer>
 
   <script src="app.js"></script>

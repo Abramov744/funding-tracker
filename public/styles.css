@@ -238,6 +238,74 @@ footer {
   font-size: 13px;
 }
 
+.chart-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: #0c0e12;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.chart-price-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chart-price-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chart-spot-section {
+  margin-top: 20px;
+}
+
+.chart-spot-section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.chart-spot-section h3 .muted {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.spot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.spot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #0c0e12;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.spot-exchange {
+  color: var(--text);
+}
+
+.spot-price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .chart-body {
   width: 100%;
 }

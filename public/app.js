@@ -24,9 +24,12 @@ const els = {
   chartClose: document.getElementById('chartClose'),
   chartTitle: document.getElementById('chartTitle'),
   chartSubtitle: document.getElementById('chartSubtitle'),
+  chartFuturesPrice: document.getElementById('chartFuturesPrice'),
   chartBody: document.getElementById('chartBody'),
   chartCanvas: document.getElementById('chartCanvas'),
   chartMessage: document.getElementById('chartMessage'),
+  spotList: document.getElementById('spotList'),
+  spotMessage: document.getElementById('spotMessage'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -42,6 +45,20 @@ function fmtAprPct(v) {
 function fmtRatio(v) {
   if (v === null || v === undefined) return '—';
   return (v * 100).toFixed(0) + '%';
+}
+
+// Crypto prices span many orders of magnitude (BTC ~ 100000, some tokens ~ 0.00000012),
+// so pick the decimal precision from the magnitude instead of a fixed digit count.
+function fmtPrice(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const abs = Math.abs(v);
+  let digits;
+  if (abs === 0) digits = 2;
+  else if (abs >= 100) digits = 2;
+  else if (abs >= 1) digits = 4;
+  else if (abs >= 0.01) digits = 6;
+  else digits = 8;
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function rowMatchesStrategy(row) {
@@ -272,10 +289,7 @@ function closeChart() {
   els.chartOverlay.hidden = true;
 }
 
-async function openCoinChart(row) {
-  els.chartOverlay.hidden = false;
-  els.chartTitle.textContent = `${row.baseAsset} — фандинг за 30 дней`;
-  els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
+async function loadFundingChart(row) {
   els.chartMessage.hidden = true;
   els.chartBody.hidden = false;
   els.chartCanvas.getContext('2d').clearRect(0, 0, els.chartCanvas.width, els.chartCanvas.height);
@@ -301,6 +315,53 @@ async function openCoinChart(row) {
     els.chartMessage.hidden = false;
     els.chartMessage.textContent = 'Не удалось загрузить историю: ' + (err.message || err);
   }
+}
+
+function spotRowHtml(v) {
+  return `
+    <div class="spot-row">
+      <span class="spot-exchange">${v.name}</span>
+      <span class="spot-price">${fmtPrice(v.price)} <span class="muted">${v.quote}</span></span>
+    </div>
+  `;
+}
+
+async function loadSpotVenues(baseAsset) {
+  els.spotMessage.hidden = true;
+  els.spotList.hidden = false;
+  els.spotList.innerHTML = '<p class="chart-message">Загрузка…</p>';
+
+  try {
+    const res = await fetch(`/api/spot-prices?symbol=${encodeURIComponent(baseAsset)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    if (!data.venues || data.venues.length === 0) {
+      els.spotList.hidden = true;
+      els.spotMessage.hidden = false;
+      els.spotMessage.textContent = data.coingeckoId
+        ? 'Не нашлась ни на одной из топ-15 бирж + Aster.'
+        : 'Монета не найдена в базе CoinGecko — сравнение спот-цен недоступно.';
+      return;
+    }
+
+    els.spotList.innerHTML = data.venues.map(spotRowHtml).join('');
+  } catch (err) {
+    els.spotList.hidden = true;
+    els.spotMessage.hidden = false;
+    els.spotMessage.textContent = 'Не удалось загрузить спот-цены: ' + (err.message || err);
+  }
+}
+
+function openCoinChart(row) {
+  els.chartOverlay.hidden = false;
+  els.chartTitle.textContent = `${row.baseAsset} — фандинг за 30 дней`;
+  els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
+  els.chartFuturesPrice.textContent = fmtPrice(row.price);
+
+  // Independent lookups — kick both off at once instead of chaining them.
+  loadFundingChart(row);
+  loadSpotVenues(row.baseAsset);
 }
 
 els.tbody.addEventListener('click', (e) => {
