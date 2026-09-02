@@ -181,6 +181,41 @@ footer {
   text-decoration-color: var(--accent);
 }
 
+.fav-star {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: -1px;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.fav-star:hover { color: var(--accent); }
+.fav-star:active { transform: scale(0.9); }
+.fav-star.active { color: #f5c518; }
+
+.fav-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fav-toggle:hover { border-color: var(--muted); }
+
+.fav-toggle.active {
+  background: rgba(245, 197, 24, 0.14);
+  border-color: #f5c518;
+  color: #f5c518;
+}
+
 .chart-overlay {
   position: fixed;
   inset: 0;
@@ -402,7 +437,8 @@ footer {
     align-items: stretch;
   }
 
-  #refreshBtn {
+  #refreshBtn,
+  .fav-toggle {
     width: 100%;
     padding: 12px;
   }
@@ -467,6 +503,7 @@ footer {
   }
   td.cell-coin::before { content: none; }
   td.cell-coin .coin-link { font-size: 18px; }
+  td.cell-coin .fav-star { font-size: 20px; padding: 4px; margin-left: -4px; }
 
   /* Chart popup goes full-screen rather than a small centered box. */
   .chart-overlay { padding: 0; align-items: stretch; }
