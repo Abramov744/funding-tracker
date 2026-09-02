@@ -30,6 +30,8 @@ const els = {
   chartMessage: document.getElementById('chartMessage'),
   spotList: document.getElementById('spotList'),
   spotMessage: document.getElementById('spotMessage'),
+  mobileSortKey: document.getElementById('mobileSortKey'),
+  mobileSortDir: document.getElementById('mobileSortDir'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -110,6 +112,10 @@ function updateSortArrows() {
     if (!arrow) return;
     arrow.textContent = th.dataset.key === state.sortKey ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
   });
+  // Table headers are hidden on mobile (cards have no room for a header row to tap),
+  // so this dropdown+button pair is the mobile equivalent — keep it in sync either way.
+  els.mobileSortKey.value = state.sortKey;
+  els.mobileSortDir.textContent = state.sortDir === 'asc' ? '▲' : '▼';
 }
 
 function render() {
@@ -127,15 +133,15 @@ function render() {
     const aprClass = row.aprPct > 0 ? 'positive' : row.aprPct < 0 ? 'negative' : '';
 
     tr.innerHTML = `
-      <td>${row.exchangeLabel}</td>
-      <td><button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button></td>
-      <td>${row.marketCapRank ?? '—'}</td>
-      <td class="${rateClass}">${fmtPct(row.fundingRate)}</td>
-      <td class="${aprClass}">${fmtAprPct(row.aprPct)}</td>
-      <td>${row.periods}</td>
-      <td>${fmtRatio(row.positiveRatio)}</td>
-      <td class="${row.minRate < 0 ? 'negative' : ''}">${fmtPct(row.minRate)}</td>
-      <td>${fmtAprPct(row.avgAprPct)}</td>
+      <td class="cell-exchange" data-label="Биржа">${row.exchangeLabel}</td>
+      <td class="cell-coin" data-label="Монета"><button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button></td>
+      <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
+      <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
+      <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
+      <td data-label="Периодов">${row.periods}</td>
+      <td data-label="% полож.">${fmtRatio(row.positiveRatio)}</td>
+      <td class="${row.minRate < 0 ? 'negative' : ''}" data-label="Мин. ставка">${fmtPct(row.minRate)}</td>
+      <td data-label="Ср. APR %">${fmtAprPct(row.avgAprPct)}</td>
     `;
     els.tbody.appendChild(tr);
   }
@@ -187,6 +193,16 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
 ].forEach((el) => el.addEventListener('input', render));
 
 document.querySelectorAll('.ex-filter').forEach((el) => el.addEventListener('change', render));
+
+els.mobileSortKey.addEventListener('change', () => {
+  state.sortKey = els.mobileSortKey.value;
+  render();
+});
+
+els.mobileSortDir.addEventListener('click', () => {
+  state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  render();
+});
 
 els.refreshBtn.addEventListener('click', async () => {
   els.refreshBtn.disabled = true;

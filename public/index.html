@@ -14,7 +14,7 @@
   </header>
 
   <section class="controls">
-    <div class="control-group">
+    <div class="control-group group-exchanges">
       <span class="control-label">Биржи</span>
       <label><input type="checkbox" class="ex-filter" value="aster" checked /> Aster</label>
       <label><input type="checkbox" class="ex-filter" value="mexc" checked /> MEXC</label>
@@ -27,11 +27,11 @@
       <label><input type="checkbox" class="ex-filter" value="dydx" checked /> dYdX</label>
     </div>
 
-    <div class="control-group">
+    <div class="control-group group-search">
       <label>Поиск монеты <input type="text" id="search" placeholder="напр. BTC" /></label>
     </div>
 
-    <div class="control-group">
+    <div class="control-group group-filters">
       <label>Мин. APR % <input type="number" id="minApr" value="10" step="1" /></label>
       <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
       <label>Мин. периодов истории <input type="number" id="minPeriods" value="10" step="1" /></label>
@@ -41,11 +41,28 @@
       <label><input type="checkbox" id="onlyMatch" /> Только подходящие под стратегию</label>
     </div>
 
-    <div class="control-group">
+    <div class="control-group group-actions">
       <button id="refreshBtn">Обновить сейчас</button>
       <span id="status" class="status"></span>
     </div>
   </section>
+
+  <div class="mobile-sort" id="mobileSort">
+    <label>Сортировка
+      <select id="mobileSortKey">
+        <option value="exchangeLabel">Биржа</option>
+        <option value="baseAsset">Монета</option>
+        <option value="marketCapRank">Ранг CMC</option>
+        <option value="fundingRate">Ставка (период)</option>
+        <option value="aprPct" selected>APR %</option>
+        <option value="periods">Периодов</option>
+        <option value="positiveRatio">% полож.</option>
+        <option value="minRate">Мин. ставка</option>
+        <option value="avgAprPct">Ср. APR %</option>
+      </select>
+    </label>
+    <button type="button" id="mobileSortDir" aria-label="Направление сортировки">▼</button>
+  </div>
 
   <section id="errorBanner" class="error-banner" hidden></section>
 
