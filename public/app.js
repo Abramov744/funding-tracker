@@ -340,7 +340,7 @@ async function loadSpotVenues(baseAsset) {
       els.spotList.hidden = true;
       els.spotMessage.hidden = false;
       els.spotMessage.textContent = data.coingeckoId
-        ? 'Не нашлась ни на одной из топ-15 бирж + Aster.'
+        ? 'Не нашлось данных о спот-торговле этой монетой ни на одной бирже.'
         : 'Монета не найдена в базе CoinGecko — сравнение спот-цен недоступно.';
       return;
     }
