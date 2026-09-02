@@ -1,8 +1,33 @@
+const FAVORITES_KEY = 'funding-tracker-favorites';
+
+// Favorites are keyed by base asset (e.g. "BTC"), not by exchange+symbol — the same
+// coin usually shows up as several rows (one per exchange), and starring it once
+// should mark all of them, so the favorites view can compare where funding is best
+// right now for a coin you're already tracking.
+function loadFavorites() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(favorites) {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+  } catch {
+    // Private-browsing/storage-blocked — favorites just won't persist across reloads.
+  }
+}
+
 const state = {
   rows: [],
   updatedAt: null,
   sortKey: 'aprPct',
   sortDir: 'desc',
+  favorites: loadFavorites(),
+  showFavoritesOnly: false,
 };
 
 const els = {
@@ -32,6 +57,7 @@ const els = {
   spotMessage: document.getElementById('spotMessage'),
   mobileSortKey: document.getElementById('mobileSortKey'),
   mobileSortDir: document.getElementById('mobileSortDir'),
+  favToggle: document.getElementById('favToggle'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -89,6 +115,7 @@ function getFilteredRows() {
     if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
     if (onlyChecked && !row.historyChecked) return false;
     if (onlyMatch && !rowMatchesStrategy(row)) return false;
+    if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
     return true;
   });
 }
@@ -118,8 +145,16 @@ function updateSortArrows() {
   els.mobileSortDir.textContent = state.sortDir === 'asc' ? '▲' : '▼';
 }
 
+function updateFavToggle() {
+  const count = state.favorites.size;
+  els.favToggle.textContent = `${state.showFavoritesOnly ? '★' : '☆'} Избранное${count ? ` (${count})` : ''}`;
+  els.favToggle.classList.toggle('active', state.showFavoritesOnly);
+  els.favToggle.setAttribute('aria-pressed', String(state.showFavoritesOnly));
+}
+
 function render() {
   updateSortArrows();
+  updateFavToggle();
   const rows = sortRows(getFilteredRows());
   els.tbody.innerHTML = '';
   els.emptyState.hidden = rows.length > 0;
@@ -131,10 +166,14 @@ function render() {
 
     const rateClass = row.fundingRate > 0 ? 'positive' : row.fundingRate < 0 ? 'negative' : '';
     const aprClass = row.aprPct > 0 ? 'positive' : row.aprPct < 0 ? 'negative' : '';
+    const isFav = state.favorites.has(row.baseAsset);
 
     tr.innerHTML = `
       <td class="cell-exchange" data-label="Биржа">${row.exchangeLabel}</td>
-      <td class="cell-coin" data-label="Монета"><button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button></td>
+      <td class="cell-coin" data-label="Монета">
+        <button type="button" class="fav-star${isFav ? ' active' : ''}" data-symbol="${row.baseAsset}" aria-pressed="${isFav}" aria-label="${isFav ? 'Убрать из избранного' : 'В избранное'}">${isFav ? '★' : '☆'}</button>
+        <button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button>
+      </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
       <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
@@ -381,11 +420,29 @@ function openCoinChart(row) {
 }
 
 els.tbody.addEventListener('click', (e) => {
+  const starBtn = e.target.closest('.fav-star');
+  if (starBtn) {
+    const symbol = starBtn.dataset.symbol;
+    if (state.favorites.has(symbol)) {
+      state.favorites.delete(symbol);
+    } else {
+      state.favorites.add(symbol);
+    }
+    saveFavorites(state.favorites);
+    render();
+    return;
+  }
+
   const btn = e.target.closest('.coin-link');
   if (!btn) return;
   const { exchange, symbol } = btn.dataset;
   const row = state.rows.find((r) => r.exchange === exchange && r.symbol === symbol);
   if (row) openCoinChart(row);
+});
+
+els.favToggle.addEventListener('click', () => {
+  state.showFavoritesOnly = !state.showFavoritesOnly;
+  render();
 });
 
 els.chartClose.addEventListener('click', closeChart);
