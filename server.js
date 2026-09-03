@@ -30,8 +30,16 @@ app.get('/api/funding', (req, res) => {
   });
 });
 
-app.post('/api/refresh', async (req, res) => {
-  const state = await cache.refresh({ force: true });
+// Kicks off a refresh and returns immediately rather than waiting for it to
+// finish — with ten exchanges now (some needing many per-symbol requests,
+// throttled on top of that for rate-limit-sensitive ones like Hyperliquid),
+// a full cycle can take well past what a browser/proxy will wait on one
+// request for. The client polls /api/funding's `refreshing` flag instead to
+// know when it's done — same source of truth the background 5-minute
+// auto-refresh already exposes.
+app.post('/api/refresh', (req, res) => {
+  cache.refresh({ force: true }).catch((err) => console.error('Manual refresh failed:', err));
+  const state = cache.getState();
   res.json({ updatedAt: state.updatedAt, refreshing: state.refreshing, errors: state.errors });
 });
 

@@ -88,6 +88,12 @@ button {
 
 button:hover { opacity: 0.9; }
 
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+button:disabled:hover { opacity: 0.55; }
+
 .status { color: var(--muted); }
 
 .error-banner {
