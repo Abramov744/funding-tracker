@@ -59,6 +59,8 @@ const els = {
   mobileSortKey: document.getElementById('mobileSortKey'),
   mobileSortDir: document.getElementById('mobileSortDir'),
   favToggle: document.getElementById('favToggle'),
+  selectAllExchanges: document.getElementById('selectAllExchanges'),
+  deselectAllExchanges: document.getElementById('deselectAllExchanges'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -267,6 +269,16 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
 ].forEach((el) => el.addEventListener('input', render));
 
 document.querySelectorAll('.ex-filter').forEach((el) => el.addEventListener('change', render));
+
+function setAllExchangeFilters(checked) {
+  document.querySelectorAll('.ex-filter').forEach((el) => {
+    el.checked = checked;
+  });
+  render();
+}
+
+els.selectAllExchanges.addEventListener('click', () => setAllExchangeFilters(true));
+els.deselectAllExchanges.addEventListener('click', () => setAllExchangeFilters(false));
 
 els.mobileSortKey.addEventListener('change', () => {
   state.sortKey = els.mobileSortKey.value;
