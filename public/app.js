@@ -24,6 +24,7 @@ function saveFavorites(favorites) {
 const state = {
   rows: [],
   updatedAt: null,
+  refreshing: false,
   sortKey: 'aprPct',
   sortDir: 'desc',
   favorites: loadFavorites(),
@@ -194,7 +195,16 @@ function render() {
   }
 
   const ts = state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString('ru-RU') : '—';
-  els.status.textContent = `Обновлено: ${ts} · строк: ${rows.length}/${state.rows.length}`;
+  // A background auto-refresh (every 5 min) can be in progress when this renders
+  // too, not just a manual click — either way, make it unambiguous that the
+  // table below might still be a bit stale rather than silently showing old data.
+  els.status.textContent = state.refreshing
+    ? `Обновляется… (данные на ${ts})`
+    : `Обновлено: ${ts} · строк: ${rows.length}/${state.rows.length}`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function loadData() {
@@ -202,6 +212,7 @@ async function loadData() {
   const data = await res.json();
   state.rows = data.rows || [];
   state.updatedAt = data.updatedAt;
+  state.refreshing = Boolean(data.refreshing);
 
   const errorEntries = Object.entries(data.errors || {});
   if (errorEntries.length) {
@@ -213,6 +224,22 @@ async function loadData() {
   }
 
   render();
+  return data;
+}
+
+// After POSTing /api/refresh (which now returns immediately rather than waiting
+// for the whole multi-exchange cycle to finish — see server.js), poll until the
+// backend reports it's done so the "Обновляется…" status is never left stuck.
+async function pollUntilIdle() {
+  const POLL_INTERVAL_MS = 2000;
+  const MAX_WAIT_MS = 3 * 60 * 1000; // safety cap — don't poll forever if something wedges
+  const deadline = Date.now() + MAX_WAIT_MS;
+
+  while (Date.now() < deadline) {
+    const data = await loadData();
+    if (!data.refreshing) return;
+    await sleep(POLL_INTERVAL_MS);
+  }
 }
 
 document.querySelectorAll('th[data-key]').forEach((th) => {
@@ -252,13 +279,18 @@ els.mobileSortDir.addEventListener('click', () => {
 });
 
 els.refreshBtn.addEventListener('click', async () => {
+  const originalLabel = els.refreshBtn.textContent;
   els.refreshBtn.disabled = true;
-  els.status.textContent = 'Обновление...';
+  els.refreshBtn.textContent = 'Обновляется…';
+  els.status.textContent = 'Обновляется…';
   try {
     await fetch('/api/refresh', { method: 'POST' });
-    await loadData();
+    await pollUntilIdle();
+  } catch (err) {
+    els.status.textContent = 'Не удалось обновить: ' + (err.message || err);
   } finally {
     els.refreshBtn.disabled = false;
+    els.refreshBtn.textContent = originalLabel;
   }
 });
 
