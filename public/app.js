@@ -40,7 +40,7 @@ const els = {
   search: document.getElementById('search'),
   minApr: document.getElementById('minApr'),
   minPositiveRatio: document.getElementById('minPositiveRatio'),
-  minPeriods: document.getElementById('minPeriods'),
+  minDays: document.getElementById('minDays'),
   maxRank: document.getElementById('maxRank'),
   noNegatives: document.getElementById('noNegatives'),
   onlyChecked: document.getElementById('onlyChecked'),
@@ -78,12 +78,17 @@ function fmtRatio(v) {
   return (v * 100).toFixed(0) + '%';
 }
 
-// "190" -> "190 (63.3 дн.)" — periods alone don't tell you the lookback window
-// since the funding interval differs by exchange/coin (1h/4h/8h).
-function fmtPeriods(periods, intervalHours) {
-  if (!intervalHours) return String(periods);
-  const days = (periods * intervalHours) / 24;
-  return `${periods} (${days.toFixed(1)} дн.)`;
+// Periods alone don't tell you the lookback window since the funding interval
+// differs by exchange/coin (1h/4h/8h) — this converts to actual calendar days.
+function historyDays(row) {
+  if (!row.intervalHours) return 0;
+  return (row.periods * row.intervalHours) / 24;
+}
+
+// "190" -> "190 (63.3 дн.)"
+function fmtPeriods(row) {
+  if (!row.intervalHours) return String(row.periods);
+  return `${row.periods} (${historyDays(row).toFixed(1)} дн.)`;
 }
 
 // Crypto prices span many orders of magnitude (BTC ~ 100000, some tokens ~ 0.00000012),
@@ -103,10 +108,10 @@ function fmtPrice(v) {
 function rowMatchesStrategy(row) {
   const minApr = Number(els.minApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
-  const minPeriods = Number(els.minPeriods.value);
+  const minDays = Number(els.minDays.value);
   if (row.aprPct === null || row.aprPct < minApr) return false;
   if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
-  if (row.periods < minPeriods) return false;
+  if (historyDays(row) < minDays) return false;
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
   const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
   if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
@@ -188,7 +193,7 @@ function render() {
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
       <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
-      <td data-label="Периодов">${fmtPeriods(row.periods, row.intervalHours)}</td>
+      <td data-label="Периодов">${fmtPeriods(row)}</td>
       <td data-label="% полож.">${fmtRatio(row.positiveRatio)}</td>
       <td class="${row.minRate < 0 ? 'negative' : ''}" data-label="Мин. ставка">${fmtPct(row.minRate)}</td>
       <td data-label="Ср. APR %">${fmtAprPct(row.avgAprPct)}</td>
@@ -261,7 +266,7 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.search,
   els.minApr,
   els.minPositiveRatio,
-  els.minPeriods,
+  els.minDays,
   els.maxRank,
   els.noNegatives,
   els.onlyChecked,
