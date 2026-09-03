@@ -75,6 +75,14 @@ function fmtRatio(v) {
   return (v * 100).toFixed(0) + '%';
 }
 
+// "190" -> "190 (63.3 дн.)" — periods alone don't tell you the lookback window
+// since the funding interval differs by exchange/coin (1h/4h/8h).
+function fmtPeriods(periods, intervalHours) {
+  if (!intervalHours) return String(periods);
+  const days = (periods * intervalHours) / 24;
+  return `${periods} (${days.toFixed(1)} дн.)`;
+}
+
 // Crypto prices span many orders of magnitude (BTC ~ 100000, some tokens ~ 0.00000012),
 // so pick the decimal precision from the magnitude instead of a fixed digit count.
 function fmtPrice(v) {
@@ -177,7 +185,7 @@ function render() {
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
       <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
-      <td data-label="Периодов">${row.periods}</td>
+      <td data-label="Периодов">${fmtPeriods(row.periods, row.intervalHours)}</td>
       <td data-label="% полож.">${fmtRatio(row.positiveRatio)}</td>
       <td class="${row.minRate < 0 ? 'negative' : ''}" data-label="Мин. ставка">${fmtPct(row.minRate)}</td>
       <td data-label="Ср. APR %">${fmtAprPct(row.avgAprPct)}</td>
