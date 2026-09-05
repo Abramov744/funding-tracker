@@ -31,7 +31,7 @@ app.get('/api/funding', (req, res) => {
 });
 
 // Kicks off a refresh and returns immediately rather than waiting for it to
-// finish — with eleven exchanges now (some needing many per-symbol requests,
+// finish — with twelve exchanges now (some needing many per-symbol requests,
 // throttled on top of that for rate-limit-sensitive ones like Hyperliquid),
 // a full cycle can take well past what a browser/proxy will wait on one
 // request for. The client polls /api/funding's `refreshing` flag instead to
