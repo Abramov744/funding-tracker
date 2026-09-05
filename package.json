@@ -1,7 +1,7 @@
 {
   "name": "funding-tracker",
   "version": "1.0.0",
-  "description": "Funding rate screener for Aster, MEXC, Gate.io, KuCoin, Bybit, BingX, OKX, Hyperliquid and dYdX perpetual futures — finds coins with sustained positive funding for spot+short (cash-and-carry) strategy",
+  "description": "Funding rate screener for Aster, MEXC, Gate.io, KuCoin, Bybit, BingX, OKX, Hyperliquid, dYdX and ApeX perpetual futures — finds coins with sustained positive funding for spot+short (cash-and-carry) strategy",
   "type": "commonjs",
   "engines": {
     "node": ">=18.0.0"
