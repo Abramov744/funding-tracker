@@ -38,7 +38,7 @@
     </div>
 
     <div class="control-group group-filters">
-      <label>Мин. APR % <input type="number" id="minApr" value="10" step="1" /></label>
+      <label>Мин. средний APR % <input type="number" id="minAvgApr" value="50" step="1" /></label>
       <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
       <label>Мин. дней истории <input type="number" id="minDays" value="7" step="1" /></label>
       <label>Макс. ранг по капитализации <input type="number" id="maxRank" placeholder="напр. 300" /></label>
@@ -61,11 +61,11 @@
         <option value="baseAsset">Монета</option>
         <option value="marketCapRank">Ранг CMC</option>
         <option value="fundingRate">Ставка (период)</option>
-        <option value="aprPct" selected>APR %</option>
+        <option value="aprPct">APR %</option>
         <option value="periods">Периодов</option>
         <option value="positiveRatio">% полож.</option>
         <option value="minRate">Мин. ставка</option>
-        <option value="avgAprPct">Ср. APR %</option>
+        <option value="avgAprPct" selected>Ср. APR %</option>
       </select>
     </label>
     <button type="button" id="mobileSortDir" aria-label="Направление сортировки">▼</button>

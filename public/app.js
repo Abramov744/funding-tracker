@@ -25,7 +25,7 @@ const state = {
   rows: [],
   updatedAt: null,
   refreshing: false,
-  sortKey: 'aprPct',
+  sortKey: 'avgAprPct',
   sortDir: 'desc',
   favorites: loadFavorites(),
   showFavoritesOnly: false,
@@ -38,7 +38,7 @@ const els = {
   emptyState: document.getElementById('emptyState'),
   table: document.getElementById('table'),
   search: document.getElementById('search'),
-  minApr: document.getElementById('minApr'),
+  minAvgApr: document.getElementById('minAvgApr'),
   minPositiveRatio: document.getElementById('minPositiveRatio'),
   minDays: document.getElementById('minDays'),
   maxRank: document.getElementById('maxRank'),
@@ -106,10 +106,10 @@ function fmtPrice(v) {
 }
 
 function rowMatchesStrategy(row) {
-  const minApr = Number(els.minApr.value);
+  const minAvgApr = Number(els.minAvgApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
   const minDays = Number(els.minDays.value);
-  if (row.aprPct === null || row.aprPct < minApr) return false;
+  if (row.avgAprPct === null || row.avgAprPct < minAvgApr) return false;
   if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
   if (historyDays(row) < minDays) return false;
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
@@ -264,7 +264,7 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
 
 [
   els.search,
-  els.minApr,
+  els.minAvgApr,
   els.minPositiveRatio,
   els.minDays,
   els.maxRank,
