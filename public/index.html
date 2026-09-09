@@ -9,7 +9,13 @@
 </head>
 <body>
   <header>
-    <h1>Funding Rate Tracker</h1>
+    <div class="header-top">
+      <h1>Funding Rate Tracker</h1>
+      <div class="header-actions">
+        <a href="/admin.html" class="link-btn">Гостевые входы</a>
+        <button type="button" id="logoutBtn" class="link-btn">Выйти</button>
+      </div>
+    </div>
     <p class="subtitle">Aster · MEXC · Gate.io · KuCoin · Bybit · BingX · OKX · Hyperliquid · dYdX · edgeX · Pacifica · Lighter · GRVT — поиск монет с устойчивым положительным фандингом для стратегии спот + шорт фьючерс</p>
   </header>
 
@@ -124,6 +130,12 @@
     <p>* Ранг по капитализации, а также цены на споте в попапе графика берутся из публичного API CoinGecko (официальный CoinMarketCap API требует платной/зарегистрированной подписки с собственным ключом). Список бирж в блоке "где купить на споте" — до 10 бирж с наибольшим объёмом торгов именно этой монетой за 24 часа по данным CoinGecko, а не фиксированный список топовых площадок.</p>
   </footer>
 
+  <script>
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+      window.location.href = '/login.html';
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

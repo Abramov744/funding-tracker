@@ -216,6 +216,10 @@ function sleep(ms) {
 
 async function loadData() {
   const res = await fetch('/api/funding');
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    return { rows: [], updatedAt: null, refreshing: false, errors: {} };
+  }
   const data = await res.json();
   state.rows = data.rows || [];
   state.updatedAt = data.updatedAt;

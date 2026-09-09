@@ -3,6 +3,7 @@ const express = require('express');
 const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
 const exchanges = require('./lib/exchanges');
+const auth = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,46 @@ async function getJson(url) {
   if (!res.ok) throw new Error(`CoinGecko ${url} -> HTTP ${res.status}`);
   return res.json();
 }
+
+app.use(express.json());
+
+// Login page and the login/logout endpoints themselves have to stay reachable
+// without a session — everything else below auth.requireAuth does not.
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const role = auth.checkCredentials(username, password);
+  if (!role) return res.status(401).json({ error: 'Неверный логин или пароль' });
+
+  if (role === 'guest') auth.recordGuestLogin(req);
+
+  const token = auth.sign({ role, iat: Date.now() });
+  res.cookie(auth.COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https',
+    maxAge: auth.SESSION_MAX_AGE_MS,
+  });
+  res.json({ ok: true, role });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.clearCookie(auth.COOKIE_NAME);
+  res.json({ ok: true });
+});
+
+// Everything from here on requires a logged-in session (guest or owner).
+app.use(auth.requireAuth);
+
+// Owner-only: how many times, and when, someone has logged in with the
+// shared "guest" password — backs public/admin.html.
+app.get('/api/guest-logins', auth.requireOwner, (req, res) => {
+  const entries = auth.readGuestLog();
+  res.json({ count: entries.length, entries });
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
