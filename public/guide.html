@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Гайд — Funding Tracker</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef0f3;
+    --border: #dde1e8;
+    --text: #1a1d24;
+    --muted: #5b6272;
+    --accent: #12996b;
+    --accent-dim: rgba(18, 153, 107, 0.10);
+    --warning: #9a6300;
+    --warning-dim: rgba(154, 99, 0, 0.10);
+    --danger: #c23b52;
+    --shot-bar: #e4e7ec;
+    --shot-dot: #c7ccd4;
+    --font-display: 'Sora', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0e13;
+      --surface: #12161d;
+      --surface-2: #1a2029;
+      --border: #262c37;
+      --text: #e8eaf0;
+      --muted: #8993a6;
+      --accent: #3ddc97;
+      --accent-dim: rgba(61, 220, 151, 0.14);
+      --warning: #f5a623;
+      --warning-dim: rgba(245, 166, 35, 0.12);
+      --danger: #ff6b6b;
+      --shot-bar: #1a2029;
+      --shot-dot: #333b47;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0e13;
+    --surface: #12161d;
+    --surface-2: #1a2029;
+    --border: #262c37;
+    --text: #e8eaf0;
+    --muted: #8993a6;
+    --accent: #3ddc97;
+    --accent-dim: rgba(61, 220, 151, 0.14);
+    --warning: #f5a623;
+    --warning-dim: rgba(245, 166, 35, 0.12);
+    --danger: #ff6b6b;
+    --shot-bar: #1a2029;
+    --shot-dot: #333b47;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    margin-bottom: 22px;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: clamp(16px, 4vw, 48px);
+    padding-block: clamp(28px, 5vw, 64px) 80px;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
+  @media (max-width: 940px) {
+    .page { grid-template-columns: 1fr; gap: 28px; }
+  }
+
+  /* ---------- TOC ---------- */
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    font-size: 13px;
+  }
+  @media (max-width: 940px) {
+    nav.toc {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+  }
+  .toc-group-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+  }
+  @media (max-width: 940px) { .toc-group-label { display: none; } }
+  nav.toc a {
+    display: block;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 3px 0;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    margin-left: -11px;
+    transition: color .15s, border-color .15s;
+  }
+  @media (max-width: 940px) {
+    nav.toc a {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 12px;
+      margin-left: 0;
+      font-size: 12px;
+    }
+  }
+  nav.toc a:hover { color: var(--text); border-left-color: var(--accent); }
+  @media (max-width: 940px) { nav.toc a:hover { border-color: var(--accent); } }
+
+  main { min-width: 0; }
+
+  /* ---------- Hero ---------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(30px, 4.4vw, 44px);
+    line-height: 1.08;
+    margin: 0 0 16px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .dek {
+    font-size: 17px;
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0 0 22px;
+  }
+  .dek strong { color: var(--text); font-weight: 600; }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 48px;
+  }
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+  }
+  .fact b { color: var(--text); font-weight: 500; }
+
+  /* ---------- Section structure ---------- */
+  .part-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 64px 0 8px;
+  }
+  .part-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .part-label:first-of-type { margin-top: 0; }
+
+  section.step, article.plain {
+    margin-top: 40px;
+    scroll-margin-top: 20px;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 24px;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    text-wrap: balance;
+  }
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-radius: 6px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 16px;
+    margin: 28px 0 10px;
+  }
+
+  p { margin: 0 0 14px; max-width: 68ch; }
+  p.tight { margin-bottom: 8px; }
+
+  ul, ol { margin: 0 0 14px; padding-left: 22px; max-width: 66ch; }
+  li { margin-bottom: 7px; }
+
+  code, .kbd {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  a.inline-link { color: var(--accent); }
+
+  /* ---------- Screenshot frame ---------- */
+  figure.shot {
+    margin: 20px 0 8px;
+    max-width: 100%;
+  }
+  .shot-frame {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .shot-bar {
+    height: 30px;
+    background: var(--shot-bar);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .shot-bar span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--shot-dot);
+  }
+  figure.shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  figure.shot.narrow { max-width: 280px; margin-inline: auto; }
+  figure.shot.medium { max-width: 480px; }
+  figcaption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 8px;
+    text-align: center;
+  }
+  figure.shot.medium figcaption, figure.shot.narrow figcaption { text-align: left; }
+
+  /* ---------- Column key table ---------- */
+  .col-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0 6px;
+    font-size: 14px;
+  }
+  .col-table th, .col-table td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .col-table th {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .col-table td.name { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; color: var(--text); }
+  .col-table td.desc { color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+  .exch-table td.yes { color: var(--accent); font-weight: 600; }
+  .exch-table td.no { color: var(--muted); }
+
+  /* ---------- Callout boxes ---------- */
+  .callout {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 18px 0;
+    max-width: 68ch;
+  }
+  .callout.risk {
+    border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+    background: var(--warning-dim);
+  }
+  .callout-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .callout.risk .callout-label { color: var(--warning); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .limits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+  }
+  .limit-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--surface);
+  }
+  .limit-card h4 {
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .limit-card p { font-size: 13.5px; color: var(--muted); margin: 0; max-width: none; }
+
+  footer.page-footer {
+    margin-top: 72px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  ::selection { background: var(--accent-dim); }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <nav class="toc" aria-label="Оглавление">
+    <div>
+      <a class="back-link" href="/">← к сканеру</a>
+      <div class="toc-group-label">Зачем это</div>
+      <a href="#what">Что это такое</a>
+      <a href="#strategy">Стратегия</a>
+    </div>
+    <div>
+      <div class="toc-group-label">Как пользоваться</div>
+      <a href="#login">1. Вход</a>
+      <a href="#overview">2. Общий вид</a>
+      <a href="#columns">3. Колонки таблицы</a>
+      <a href="#filters">4. Фильтры</a>
+      <a href="#sorting">5. Сортировка</a>
+      <a href="#chart">6. График и спот</a>
+      <a href="#favorites">7. Избранное</a>
+      <a href="#refresh">8. Обновление</a>
+    </div>
+    <div>
+      <div class="toc-group-label">Важно знать</div>
+      <a href="#limits">Ограничения</a>
+      <a href="#exchanges">Биржи</a>
+    </div>
+  </nav>
+
+  <main>
+    <p class="eyebrow">Гайд · Funding Tracker</p>
+    <h1>Как пользоваться сканером фандинга</h1>
+    <p class="dek">
+      Тебе выдали доступ к приватному инструменту, который каждые 5 минут сканирует
+      13 бирж и ищет монеты с устойчиво <strong>положительным фандингом</strong> — платой, которую
+      лонги платят шортам на бессрочных фьючерсах. Ниже — что это значит, как читать таблицу и
+      на что смотреть, прежде чем куда-то заходить деньгами.
+    </p>
+    <div class="facts">
+      <span class="fact"><b>13</b> бирж</span>
+      <span class="fact">окно статистики — <b>30</b> дней</span>
+      <span class="fact">стратегия — <b>спот + шорт перп</b> (cash-and-carry)</span>
+      <span class="fact">обновление — раз в <b>5</b> минут</span>
+    </div>
+
+    <!-- ================= PART 1 ================= -->
+    <article class="plain" id="what">
+      <h2>Что это такое</h2>
+      <p>
+        Funding Tracker — это не биржа и не бот. Это <strong>только экран мониторинга</strong>:
+        он читает публичные данные бирж, ничего не покупает и не хранит твои ключи. Его единственная
+        задача — сузить сотни бессрочных фьючерсов до горстки монет, где ставка фандинга держится
+        положительной достаточно долго, чтобы под неё имело смысл открывать позицию.
+      </p>
+      <p>
+        Каждая строка таблицы — это пара «биржа + монета». Сканер закрепляет свой снимок рынка
+        не по текущей ставке, а по <strong>среднему APR за последние 30 дней</strong> — так
+        одна случайно высокая выплата не выведет монету в топ, если до этого фандинг был низким
+        или отрицательным.
+      </p>
+    </article>
+
+    <article class="plain" id="strategy">
+      <h2>Как работает стратегия</h2>
+      <p>
+        На бессрочном фьючерсе нет даты экспирации, поэтому цену перпа держат рядом со спотовой
+        через <strong>funding rate</strong> — периодическую выплату между теми, кто в лонге, и
+        теми, кто в шорте. Когда ставка положительная, лонги платят шортам; отрицательная — наоборот.
+        Выплата происходит каждые 1–8 часов в зависимости от биржи и монеты.
+      </p>
+      <p>
+        Идея <strong>cash-and-carry</strong> — убрать риск движения цены и оставить только эту
+        выплату:
+      </p>
+      <ol>
+        <li>Купить монету на споте (лонг) — на любой удобной бирже.</li>
+        <li>Одновременно открыть шорт на бессрочный фьючерс той же монеты на ту же сумму.</li>
+        <li>Цена вырастет — потеряешь на шорте ровно столько, сколько заработаешь на споте, и наоборот. Позиция рыночно-нейтральна.</li>
+        <li>Единственное, что остаётся — фандинг, который ты как шорт получаешь каждый период, пока ставка положительная.</li>
+      </ol>
+      <div class="callout risk">
+        <span class="callout-label">Это не бесплатные деньги</span>
+        <p>
+          Ставка может в любой момент уйти в минус — тогда платить будешь уже ты. Комиссии входа
+          и выхода на двух ногах сразу съедают часть тонкого фандинга. Спот и перп обычно живут на
+          разных биржах или сетях — это дополнительный операционный риск (перевод средств, маржа на
+          перп-ноге при резком движении цены). Средний APR в таблице — это то, что <em>было</em> за
+          последние 30 дней, а не гарантия того, что будет дальше.
+        </p>
+      </div>
+    </article>
+
+    <!-- ================= PART 2 ================= -->
+    <p class="part-label">Как пользоваться сканером</p>
+
+    <section class="step" id="login">
+      <h2><span class="step-num">1</span> Вход</h2>
+      <p>
+        Открой ссылку сканера и введи логин и пароль, которые тебе дал администратор. Сессия
+        держится 30 дней — заново логиниться при каждом заходе не придётся.
+      </p>
+      <figure class="shot narrow">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/01-login.jpeg" alt="Страница входа Funding Tracker: поля логина и пароля" />
+        </div>
+        <figcaption>Страница входа</figcaption>
+      </figure>
+    </section>
+
+    <section class="step" id="overview">
+      <h2><span class="step-num">2</span> Общий вид</h2>
+      <p>
+        После входа открывается сама таблица: сверху — список бирж и фильтры, снизу — строки
+        «биржа + монета», отсортированные по среднему APR. Строка со <strong>слегка зелёной
+        подсветкой</strong> — это монета, которая прямо сейчас проходит все условия твоей стратегии
+        (см. фильтры ниже), даже если галочка «только подходящие» не включена.
+      </p>
+      <figure class="shot">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/02-overview.jpeg" alt="Общий вид сканера: шапка, панель фильтров и таблица монет" />
+        </div>
+        <figcaption>Шапка, фильтры и таблица сразу после входа</figcaption>
+      </figure>
+    </section>
+
+    <section class="step" id="columns">
+      <h2><span class="step-num">3</span> Что означает каждая колонка</h2>
+      <figure class="shot">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/04-table.jpeg" alt="Заголовки колонок и первые строки таблицы" />
+        </div>
+        <figcaption>Заголовки колонок</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table class="col-table">
+          <thead><tr><th>Колонка</th><th>Что значит</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Биржа</td><td class="desc">Где торгуется этот конкретный перпетуал.</td></tr>
+            <tr><td class="name">Монета</td><td class="desc">Базовый тикер. Одна и та же монета обычно встречается несколько раз — по одной строке на биржу, где она торгуется.</td></tr>
+            <tr><td class="name">Ранг CMC*</td><td class="desc">Ранг по капитализации. Помечен звёздочкой — на деле берётся из CoinGecko, а не CoinMarketCap (у CMC API только платный). Низкий ранг или прочерк — сигнал слабой ликвидности.</td></tr>
+            <tr><td class="name">Ставка (период)</td><td class="desc">Сколько платят/получают за один период выплаты прямо сейчас — без пересчёта в годовые.</td></tr>
+            <tr><td class="name">APR %</td><td class="desc">Та же текущая ставка, пересчитанная в годовые проценты — для сравнения бирж с разным интервалом выплат.</td></tr>
+            <tr><td class="name">Периодов</td><td class="desc">Сколько выплат фандинга попало в 30-дневное окно (и сколько это дней) — короче 30 дней означает, что у монеты просто нет более длинной истории.</td></tr>
+            <tr><td class="name">% полож.</td><td class="desc">Доля периодов за 30 дней, где ставка была положительной. Чем ближе к 100%, тем стабильнее.</td></tr>
+            <tr><td class="name">Мин. ставка</td><td class="desc">Самая низкая ставка периода за 30 дней. Красным — если она уходила в минус.</td></tr>
+            <tr><td class="name">Ср. APR %</td><td class="desc">Средняя ставка за 30 дней, в годовых процентах. Главная колонка сканера — по ней таблица отсортирована по умолчанию.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="step" id="filters">
+      <h2><span class="step-num">4</span> Фильтры</h2>
+      <p>Панель фильтров сужает список живьём, без перезагрузки страницы.</p>
+      <figure class="shot">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/03-filters.jpeg" alt="Панель фильтров сканера" />
+        </div>
+        <figcaption>Панель фильтров</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Биржи</strong> — какие включить в таблицу; «Выделить все» / «Снять все» рядом с заголовком.</li>
+        <li><strong>Поиск монеты</strong> — фильтр по тикеру, например <code>BTC</code>.</li>
+        <li><strong>Мин. средний APR %</strong> — отсечь всё, что в среднем зарабатывает меньше указанного (по умолчанию 50%).</li>
+        <li><strong>Мин. % положительных</strong> — насколько стабильно должен быть положительным фандинг в окне (по умолчанию 90%).</li>
+        <li><strong>Мин. дней истории</strong> — не показывать монеты, по которым накопилось меньше дней данных, чем указано (по умолчанию 7).</li>
+        <li><strong>Макс. ранг по капитализации</strong> — отсечь совсем неликвидные монеты, например <code>300</code>.</li>
+        <li><strong>Без отрицательных в окне</strong> — скрыть монеты, у которых хоть один период за 30 дней был отрицательным.</li>
+        <li><strong>Только проверенные (есть история)</strong> — показывать только строки, где сканер реально досчитал историю (см. ограничения ниже).</li>
+        <li><strong>Только подходящие под стратегию</strong> — оставить исключительно строки с зелёной подсветкой из шага 2.</li>
+      </ul>
+    </section>
+
+    <section class="step" id="sorting">
+      <h2><span class="step-num">5</span> Сортировка</h2>
+      <p>
+        На широком экране клик по заголовку любой колонки сортирует по ней; второй клик —
+        меняет направление. На телефоне заголовков нет — чуть ниже панели фильтров есть
+        отдельный выпадающий список «Сортировка» с той же кнопкой смены направления рядом.
+      </p>
+    </section>
+
+    <section class="step" id="chart">
+      <h2><span class="step-num">6</span> График и где купить на споте</h2>
+      <p>
+        Клик по названию монеты (не по звёздочке рядом) открывает график ставки фандинга за
+        30 дней и список бирж, где эту монету можно купить на споте — до 10 штук, по объёму
+        торгов за последние сутки. Это не фиксированный список «топовых» площадок, а то, где
+        именно эта монета торгуется активнее всего прямо сейчас.
+      </p>
+      <figure class="shot medium">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/05-chart.jpeg" alt="Окно с графиком фандинга за 30 дней и списком бирж для покупки на споте" />
+        </div>
+        <figcaption>Клик по монете открывает график и список спот-бирж</figcaption>
+      </figure>
+    </section>
+
+    <section class="step" id="favorites">
+      <h2><span class="step-num">7</span> Избранное</h2>
+      <p>
+        Звёздочка ☆ рядом с монетой добавляет её в избранное — это работает по тикеру, а не по
+        конкретной строке, так что одна звёздочка сразу отмечает монету на всех биржах, где она
+        встречается. Кнопка «Избранное» в шапке фильтрует таблицу только на отмеченные строки —
+        удобно сравнить, где именно у одной и той же монеты фандинг сейчас выгоднее.
+      </p>
+      <figure class="shot">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/06-favorites.jpeg" alt="Таблица, отфильтрованная по избранным монетам — XMR отмечена сразу на четырёх биржах" />
+        </div>
+        <figcaption>XMR отмечена в избранном — видны сразу все биржи, где она торгуется</figcaption>
+      </figure>
+      <p style="font-size:13px;color:var(--muted)">Список избранного хранится в браузере, а не на сервере — на другом устройстве или после очистки данных сайта он не сохранится.</p>
+    </section>
+
+    <section class="step" id="refresh">
+      <h2><span class="step-num">8</span> Обновление данных</h2>
+      <p>
+        Таблица обновляется сама каждые 5 минут — время последнего обновления видно рядом с
+        кнопкой «Обновить сейчас» в статусной строке. Кнопку можно нажать вручную, но не чаще
+        раза в 30 секунд — обновление всех 13 бирж занимает какое-то время и идёт по мере
+        готовности каждой биржи, а не всё разом.
+      </p>
+      <figure class="shot narrow">
+        <div class="shot-frame"><div class="shot-bar"><span></span><span></span><span></span></div>
+          <img src="guide-assets/07-mobile.webp" alt="Мобильная версия сканера с теми же фильтрами в один столбец" />
+        </div>
+        <figcaption>Мобильная версия — те же фильтры в один столбец</figcaption>
+      </figure>
+    </section>
+
+    <!-- ================= PART 3 ================= -->
+    <p class="part-label">Важно знать</p>
+
+    <article class="plain" id="limits">
+      <h2>Ограничения и что проверять вручную</h2>
+      <div class="limits-grid">
+        <div class="limit-card">
+          <h4>Нет своего спота у 7 бирж</h4>
+          <p>Aster, Hyperliquid, dYdX, edgeX, Pacifica, Lighter и GRVT — perp-DEX без встроенного спота. Спот-ногу придётся открывать на другой бирже или в другой сети — сканер это не проверяет.</p>
+        </div>
+        <div class="limit-card">
+          <h4>Интервал выплат — не всегда 8 часов</h4>
+          <p>Он может быть 1, 4 или 8 часов и отличаться по конкретной монете даже на одной бирже (Aster, OKX, GRVT). APR% в таблице уже учитывает это и приведён к годовым.</p>
+        </div>
+        <div class="limit-card">
+          <h4>Токенизированные акции исключены</h4>
+          <p>Некоторые perp-DEX торгуют не только крипто-монетами, но и токенизированными акциями, форекс и сырьём (TSLA, XAU, EURUSD и даже «ANTHROPIC»). Сканер сверяет тикер и цену с CoinGecko и исключает всё, что не крипта.</p>
+        </div>
+        <div class="limit-card">
+          <h4>История считается только для растущих сейчас</h4>
+          <p>% положительных, стрик и средний APR считаются лишь у монет с положительной ставкой прямо сейчас. Монета со стабильной историей, ставшая отрицательной сегодня, из списка временно пропадёт.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="callout-label">Перед реальным входом</span>
+        <p>
+          Проверь вручную: глубину стакана и реальную ликвидность на обеих ногах, действительно ли
+          можно купить нужный объём на споте без сильного проскальзывания, точные комиссии входа
+          и выхода, лимиты биржи на вывод/маржу. Это инструмент мониторинга, а не торговая
+          рекомендация — цифры в таблице описывают прошлое, а не гарантируют будущий доход.
+        </p>
+      </div>
+    </article>
+
+    <article class="plain" id="exchanges">
+      <h2>Биржи в сканере</h2>
+      <div class="table-wrap">
+        <table class="col-table exch-table">
+          <thead><tr><th>Биржа</th><th>Свой спот</th><th>Обычный интервал фандинга</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Aster</td><td class="no">нет — perp-DEX</td><td class="desc">1 / 4 / 8 ч, по монете</td></tr>
+            <tr><td class="name">MEXC</td><td class="yes">да</td><td class="desc">обычно 8 ч</td></tr>
+            <tr><td class="name">Gate.io</td><td class="yes">да</td><td class="desc">обычно 8 ч</td></tr>
+            <tr><td class="name">KuCoin</td><td class="yes">да</td><td class="desc">обычно 8 ч</td></tr>
+            <tr><td class="name">Bybit</td><td class="yes">да</td><td class="desc">обычно 8 ч</td></tr>
+            <tr><td class="name">BingX</td><td class="yes">да</td><td class="desc">обычно 8 ч</td></tr>
+            <tr><td class="name">OKX</td><td class="yes">да</td><td class="desc">индивидуально по монете (обычно 8 ч)</td></tr>
+            <tr><td class="name">Hyperliquid</td><td class="no">нет — perp-DEX</td><td class="desc">1 ч</td></tr>
+            <tr><td class="name">dYdX</td><td class="no">нет — perp-DEX</td><td class="desc">1 ч</td></tr>
+            <tr><td class="name">edgeX</td><td class="no">нет — perp-DEX</td><td class="desc">4 ч</td></tr>
+            <tr><td class="name">Pacifica</td><td class="no">нет — perp-DEX</td><td class="desc">1 ч</td></tr>
+            <tr><td class="name">Lighter</td><td class="no">нет — perp-DEX</td><td class="desc">1 ч</td></tr>
+            <tr><td class="name">GRVT</td><td class="no">нет — perp-DEX</td><td class="desc">индивидуально (обычно 8 ч, может 1 / 4 ч)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <footer class="page-footer">
+      Funding Tracker — инструмент только для мониторинга: не хранит ключи бирж и не открывает
+      позиции. Все данные — публичные market-data API самих бирж и CoinGecko.
+    </footer>
+  </main>
+</div>
+</body>
+</html>
