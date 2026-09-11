@@ -12,7 +12,7 @@
     <div class="header-top">
       <h1>Funding Rate Tracker</h1>
       <div class="header-actions">
-        <a href="/admin.html" class="link-btn">Гостевые входы</a>
+        <a href="/admin.html" id="guestLogLink" class="link-btn" hidden>Гостевые входы</a>
         <button type="button" id="logoutBtn" class="link-btn">Выйти</button>
       </div>
     </div>
@@ -135,6 +135,15 @@
       await fetch('/api/logout', { method: 'POST' }).catch(() => {});
       window.location.href = '/login.html';
     });
+
+    // The guest password is meant to be handed out — its login report
+    // shouldn't advertise itself to whoever logged in with it.
+    fetch('/api/session')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.role === 'owner') document.getElementById('guestLogLink').hidden = false;
+      })
+      .catch(() => {});
   </script>
   <script src="app.js"></script>
 </body>

@@ -52,6 +52,12 @@ app.post('/api/logout', (req, res) => {
 // Everything from here on requires a logged-in session (guest or owner).
 app.use(auth.requireAuth);
 
+// Tells the frontend which role the current session has — e.g. so the
+// "Гостевые входы" link in the header only shows up for the owner.
+app.get('/api/session', (req, res) => {
+  res.json({ role: req.session.role });
+});
+
 // Owner-only: how many times, and when, someone has logged in with the
 // shared "guest" password — backs public/admin.html.
 app.get('/api/guest-logins', auth.requireOwner, (req, res) => {
