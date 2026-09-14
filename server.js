@@ -118,6 +118,18 @@ app.get('/api/history', async (req, res) => {
 
 const SPOT_VENUE_LIMIT = 10;
 
+// CoinGecko's ticker `target` field is normally a clean quote symbol (USDT,
+// USDC, ...), but for DEX pools (Uniswap, PancakeSwap, ...) it's often the
+// quote token's raw contract address instead — an EVM hex address (0x + 40
+// hex chars) or a Solana base58 mint address, neither of which means
+// anything to a reader. Real quote tickers are always short, so anything
+// longer is almost certainly an address and gets dropped rather than shown.
+const MAX_QUOTE_SYMBOL_LENGTH = 12;
+function cleanQuote(target) {
+  if (!target || typeof target !== 'string') return null;
+  return target.length <= MAX_QUOTE_SYMBOL_LENGTH ? target : null;
+}
+
 // Spot prices for one coin across the exchanges currently trading it with the
 // most 24h volume — backs the "where can I buy this on spot" list in the
 // funding-history popup.
@@ -150,7 +162,7 @@ app.get('/api/spot-prices', async (req, res) => {
       if (!id || t.last == null || volumeUsd == null) continue;
       const existing = bestByExchange.get(id);
       if (!existing || volumeUsd > existing.volumeUsd) {
-        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote: t.target, volumeUsd });
+        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote: cleanQuote(t.target), volumeUsd });
       }
     }
 

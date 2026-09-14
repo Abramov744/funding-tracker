@@ -434,10 +434,13 @@ async function loadFundingChart(row) {
 }
 
 function spotRowHtml(v) {
+  // v.quote is omitted server-side when it isn't a real ticker (DEX pools often
+  // report their quote token as a raw contract address instead of e.g. "USDT").
+  const quote = v.quote ? ` <span class="muted">${v.quote}</span>` : '';
   return `
     <div class="spot-row">
       <span class="spot-exchange">${v.name}</span>
-      <span class="spot-price">${fmtPrice(v.price)} <span class="muted">${v.quote}</span></span>
+      <span class="spot-price">${fmtPrice(v.price)}${quote}</span>
     </div>
   `;
 }
