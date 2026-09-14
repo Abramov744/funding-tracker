@@ -4,6 +4,7 @@ const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
 const exchanges = require('./lib/exchanges');
 const auth = require('./lib/auth');
+const { PRICE_BAND } = require('./lib/cryptoassets');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -137,6 +138,11 @@ app.get('/api/spot-prices', async (req, res) => {
   const symbol = (req.query.symbol || '').toString().trim();
   if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
 
+  // The row's own perp price (from the funding-rate exchange), passed by the
+  // client — used below as a sanity check against CoinGecko's tickers.
+  const refPrice = Number(req.query.refPrice);
+  const hasRefPrice = Number.isFinite(refPrice) && refPrice > 0;
+
   const cacheKey = symbol.toUpperCase();
   const cached = spotPriceCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return res.json(cached.data);
@@ -170,6 +176,16 @@ app.get('/api/spot-prices', async (req, res) => {
       // shown with a misleading price.
       const quote = cleanQuote(t.target);
       if (!quote) continue;
+
+      // CoinGecko's ticker `symbol -> coin id` match can land on the wrong
+      // coin (ticker collisions are common among low-cap coins), and even a
+      // correctly-matched coin's own ticker list can include a thinly-traded
+      // DEX pool with garbage pricing (bad liquidity/decimals on CoinGecko's
+      // side) — either way the giveaway is a price nowhere near what this
+      // symbol is actually trading at on the funding-rate exchange we already
+      // trust. Same ±2x band lib/cryptoassets.js uses to catch the same kind
+      // of collision when classifying crypto vs. tokenized stocks.
+      if (hasRefPrice && (t.last < refPrice / PRICE_BAND || t.last > refPrice * PRICE_BAND)) continue;
 
       const existing = bestByExchange.get(id);
       if (!existing || volumeUsd > existing.volumeUsd) {
