@@ -160,9 +160,20 @@ app.get('/api/spot-prices', async (req, res) => {
       const id = t.market && t.market.identifier;
       const volumeUsd = t.converted_volume && t.converted_volume.usd;
       if (!id || t.last == null || volumeUsd == null) continue;
+
+      // Skip tickers whose quote isn't a recognizable currency rather than just
+      // hiding the label: t.last is only meaningful as "the price" when it's
+      // quoted against something dollar-like (USDT/USDC/...). A DEX pool quoted
+      // against a volatile token (WETH, WBNB, ...) reports t.last in *that*
+      // token, not USD — displaying it with our "$" price formatting would be
+      // wrong, not just unlabeled, so that pool is excluded entirely instead of
+      // shown with a misleading price.
+      const quote = cleanQuote(t.target);
+      if (!quote) continue;
+
       const existing = bestByExchange.get(id);
       if (!existing || volumeUsd > existing.volumeUsd) {
-        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote: cleanQuote(t.target), volumeUsd });
+        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote, volumeUsd });
       }
     }
 
