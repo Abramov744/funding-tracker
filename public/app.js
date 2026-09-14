@@ -445,13 +445,15 @@ function spotRowHtml(v) {
   `;
 }
 
-async function loadSpotVenues(baseAsset) {
+async function loadSpotVenues(baseAsset, refPrice) {
   els.spotMessage.hidden = true;
   els.spotList.hidden = false;
   els.spotList.innerHTML = '<p class="chart-message">Загрузка…</p>';
 
   try {
-    const res = await fetch(`/api/spot-prices?symbol=${encodeURIComponent(baseAsset)}`);
+    const params = new URLSearchParams({ symbol: baseAsset });
+    if (Number.isFinite(refPrice) && refPrice > 0) params.set('refPrice', refPrice);
+    const res = await fetch(`/api/spot-prices?${params.toString()}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
@@ -480,7 +482,7 @@ function openCoinChart(row) {
 
   // Independent lookups — kick both off at once instead of chaining them.
   loadFundingChart(row);
-  loadSpotVenues(row.baseAsset);
+  loadSpotVenues(row.baseAsset, row.price);
 }
 
 els.tbody.addEventListener('click', (e) => {
