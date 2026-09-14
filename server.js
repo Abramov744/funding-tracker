@@ -193,10 +193,14 @@ app.get('/api/spot-prices', async (req, res) => {
       }
     }
 
+    // Which venues make the list is still decided by 24h volume (per the
+    // "топ-10 бирж по объёму торгов" caption in the popup) — only the display
+    // order changes, to price ascending, once that top-10 is picked.
     const venues = Array.from(bestByExchange.entries())
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => b.volumeUsd - a.volumeUsd)
-      .slice(0, SPOT_VENUE_LIMIT);
+      .slice(0, SPOT_VENUE_LIMIT)
+      .sort((a, b) => a.price - b.price);
 
     const data = { symbol, coingeckoId, venues };
     spotPriceCache.set(cacheKey, { data, expiresAt: Date.now() + SPOT_PRICE_CACHE_MS });
