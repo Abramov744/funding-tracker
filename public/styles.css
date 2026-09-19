@@ -342,18 +342,29 @@ footer {
   font-weight: 600;
 }
 
-.chart-spot-section {
+.chart-spot-section,
+.chart-trend-section {
   margin-top: 20px;
 }
 
-.chart-spot-section h3 {
+.chart-spot-section h3,
+.chart-trend-section h3 {
   margin: 0 0 10px;
   font-size: 14px;
 }
 
-.chart-spot-section h3 .muted {
+.chart-spot-section h3 .muted,
+.chart-trend-section h3 .muted {
   font-weight: 400;
   font-size: 12px;
+}
+
+.chart-trend-section .chart-body canvas {
+  height: 200px;
+}
+
+.chart-trend-section .chart-message {
+  padding: 24px 0;
 }
 
 .spot-list {

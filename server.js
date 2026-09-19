@@ -4,6 +4,7 @@ const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
 const exchanges = require('./lib/exchanges');
 const auth = require('./lib/auth');
+const aprHistory = require('./lib/aprHistory');
 const { PRICE_BAND } = require('./lib/cryptoassets');
 
 const app = express();
@@ -117,6 +118,18 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
+// Trend of the row's own *average* APR (the "Ср. APR %" column) over time —
+// distinct from /api/history above, which is individual funding settlements,
+// not how their 30-day average has moved. Served straight from the in-memory
+// hourly-snapshot store (lib/aprHistory.js); no external request involved.
+app.get('/api/apr-history', (req, res) => {
+  const { exchange, symbol } = req.query;
+  if (!exchange) return res.status(400).json({ error: 'Missing exchange' });
+  if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
+
+  res.json({ exchange, symbol, points: aprHistory.getHistory(exchange, symbol) });
+});
+
 const SPOT_VENUE_LIMIT = 10;
 
 // CoinGecko's ticker `target` field is normally a clean quote symbol (USDT,
@@ -220,5 +233,6 @@ app.listen(PORT, () => {
     .finally(() => {
       marketcap.startAutoRefresh();
       cache.startAutoRefresh();
+      aprHistory.startAutoSnapshot();
     });
 });
