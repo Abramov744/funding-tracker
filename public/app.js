@@ -54,6 +54,9 @@ const els = {
   chartBody: document.getElementById('chartBody'),
   chartCanvas: document.getElementById('chartCanvas'),
   chartMessage: document.getElementById('chartMessage'),
+  aprTrendBody: document.getElementById('aprTrendBody'),
+  aprTrendCanvas: document.getElementById('aprTrendCanvas'),
+  aprTrendMessage: document.getElementById('aprTrendMessage'),
   spotList: document.getElementById('spotList'),
   spotMessage: document.getElementById('spotMessage'),
   mobileSortKey: document.getElementById('mobileSortKey'),
@@ -433,6 +436,141 @@ async function loadFundingChart(row) {
   }
 }
 
+// --- Average-APR trend chart (how the "Ср. APR %" number itself has moved) --
+
+function drawAprTrendChart(points) {
+  const canvas = els.aprTrendCanvas;
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth || canvas.width;
+  const cssHeight = 200;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssWidth * dpr;
+  canvas.height = cssHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const W = cssWidth;
+  const H = cssHeight;
+  const padL = 56;
+  const padR = 12;
+  const padT = 14;
+  const padB = 24;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const values = points.map((p) => p.value);
+  const minV = Math.min(0, ...values);
+  const maxV = Math.max(0.001, ...values);
+  const pad = (maxV - minV) * 0.12 || 1;
+  const yMin = minV - pad;
+  const yMax = maxV + pad;
+
+  const n = points.length;
+  const xFor = (i) => padL + (n === 1 ? plotW / 2 : (plotW * i) / (n - 1));
+  const yFor = (v) => padT + plotH * (1 - (v - yMin) / (yMax - yMin));
+
+  // grid + y-axis labels
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillStyle = '#8a90a0';
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const ySteps = 4;
+  for (let i = 0; i <= ySteps; i++) {
+    const v = yMin + ((yMax - yMin) / ySteps) * i;
+    const y = yFor(v);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(W - padR, y);
+    ctx.stroke();
+    ctx.fillText(v.toFixed(1) + '%', padL - 8, y);
+  }
+
+  if (minV < 0 && maxV > 0) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    const zeroY = yFor(0);
+    ctx.beginPath();
+    ctx.moveTo(padL, zeroY);
+    ctx.lineTo(W - padR, zeroY);
+    ctx.stroke();
+  }
+
+  if (n === 0) return;
+
+  // filled area under the line
+  ctx.beginPath();
+  ctx.moveTo(xFor(0), yFor(points[0].value));
+  points.forEach((p, i) => ctx.lineTo(xFor(i), yFor(p.value)));
+  ctx.lineTo(xFor(n - 1), yFor(yMin));
+  ctx.lineTo(xFor(0), yFor(yMin));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(61, 220, 151, 0.12)';
+  ctx.fill();
+
+  // the line itself
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = xFor(i);
+    const y = yFor(p.value);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#3ddc97';
+  ctx.lineWidth = 1.75;
+  ctx.stroke();
+
+  // endpoint dot
+  const lastX = xFor(n - 1);
+  const lastY = yFor(points[n - 1].value);
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#3ddc97';
+  ctx.fill();
+
+  // x-axis date labels (first, middle, last)
+  ctx.fillStyle = '#8a90a0';
+  ctx.textBaseline = 'top';
+  const labelIdx = [0, Math.floor((n - 1) / 2), n - 1];
+  const seen = new Set();
+  labelIdx.forEach((i) => {
+    if (seen.has(i)) return;
+    seen.add(i);
+    const x = xFor(i);
+    const d = new Date(points[i].time);
+    const label = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    ctx.textAlign = i === 0 ? 'left' : i === n - 1 ? 'right' : 'center';
+    ctx.fillText(label, x, H - padB + 6);
+  });
+}
+
+async function loadAprTrend(row) {
+  els.aprTrendMessage.hidden = true;
+  els.aprTrendBody.hidden = false;
+  els.aprTrendCanvas.getContext('2d').clearRect(0, 0, els.aprTrendCanvas.width, els.aprTrendCanvas.height);
+
+  const params = new URLSearchParams({ exchange: row.exchange, symbol: row.symbol });
+
+  try {
+    const res = await fetch(`/api/apr-history?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    if (!data.points || data.points.length < 2) {
+      els.aprTrendBody.hidden = true;
+      els.aprTrendMessage.hidden = false;
+      els.aprTrendMessage.textContent = 'Пока недостаточно данных для тренда — снимки собираются раз в час, загляните позже.';
+      return;
+    }
+
+    drawAprTrendChart(data.points);
+  } catch (err) {
+    els.aprTrendBody.hidden = true;
+    els.aprTrendMessage.hidden = false;
+    els.aprTrendMessage.textContent = 'Не удалось загрузить тренд: ' + (err.message || err);
+  }
+}
+
 function spotRowHtml(v) {
   // v.quote is omitted server-side when it isn't a real ticker (DEX pools often
   // report their quote token as a raw contract address instead of e.g. "USDT").
@@ -480,8 +618,9 @@ function openCoinChart(row) {
   els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
   els.chartFuturesPrice.textContent = fmtPrice(row.price);
 
-  // Independent lookups — kick both off at once instead of chaining them.
+  // Independent lookups — kick all three off at once instead of chaining them.
   loadFundingChart(row);
+  loadAprTrend(row);
   loadSpotVenues(row.baseAsset, row.price);
 }
 
