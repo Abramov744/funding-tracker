@@ -42,6 +42,7 @@ const els = {
   minPositiveRatio: document.getElementById('minPositiveRatio'),
   minDays: document.getElementById('minDays'),
   maxRank: document.getElementById('maxRank'),
+  minOi: document.getElementById('minOi'),
   noNegatives: document.getElementById('noNegatives'),
   onlyChecked: document.getElementById('onlyChecked'),
   onlyMatch: document.getElementById('onlyMatch'),
@@ -108,6 +109,18 @@ function fmtPrice(v) {
   return '$' + v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
+// Compact notation for large USD figures ($850.4M / $18.3M / $46K) — OI values
+// span from a few thousand to hundreds of millions, where fmtPrice's fixed
+// decimal places would be unreadable.
+function fmtCompactUsd(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0);
+}
+
 function rowMatchesStrategy(row) {
   const minAvgApr = Number(els.minAvgApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
@@ -118,6 +131,8 @@ function rowMatchesStrategy(row) {
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
   const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
   if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
+  const minOi = els.minOi.value ? Number(els.minOi.value) : null;
+  if (minOi !== null && (row.openInterestUsd === null || row.openInterestUsd === undefined || row.openInterestUsd < minOi)) return false;
   return true;
 }
 
@@ -194,6 +209,7 @@ function render() {
         <button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button>
       </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
+      <td data-label="OI**">${fmtCompactUsd(row.openInterestUsd)}</td>
       <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
       <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
       <td data-label="Периодов">${fmtPeriods(row)}</td>
@@ -275,6 +291,7 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.minPositiveRatio,
   els.minDays,
   els.maxRank,
+  els.minOi,
   els.noNegatives,
   els.onlyChecked,
   els.onlyMatch,
