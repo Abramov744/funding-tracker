@@ -131,7 +131,7 @@ function rowMatchesStrategy(row) {
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
   const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
   if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
-  const minOi = els.minOi.value ? Number(els.minOi.value) : null;
+  const minOi = els.minOi.value ? Number(els.minOi.value) * 1000 : null; // input is in thousands of $
   if (minOi !== null && (row.openInterestUsd === null || row.openInterestUsd === undefined || row.openInterestUsd < minOi)) return false;
   return true;
 }
