@@ -44,7 +44,6 @@ const els = {
   maxRank: document.getElementById('maxRank'),
   minOi: document.getElementById('minOi'),
   noNegatives: document.getElementById('noNegatives'),
-  onlyChecked: document.getElementById('onlyChecked'),
   onlyMatch: document.getElementById('onlyMatch'),
   refreshBtn: document.getElementById('refreshBtn'),
   chartOverlay: document.getElementById('chartOverlay'),
@@ -124,10 +123,11 @@ function fmtCompactUsd(v) {
 function rowMatchesStrategy(row) {
   const minAvgApr = Number(els.minAvgApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
-  const minDays = Number(els.minDays.value);
   if (row.avgAprPct === null || row.avgAprPct < minAvgApr) return false;
   if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
-  if (historyDays(row) < minDays) return false;
+  // historyDays(row) < minDays isn't checked here — getFilteredRows already
+  // excludes those rows from the table entirely, so anything reaching this
+  // function already clears the threshold.
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
   const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
   if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
@@ -141,13 +141,17 @@ function getFilteredRows() {
     Array.from(document.querySelectorAll('.ex-filter:checked')).map((el) => el.value)
   );
   const search = els.search.value.trim().toUpperCase();
-  const onlyChecked = els.onlyChecked.checked;
   const onlyMatch = els.onlyMatch.checked;
+  const minDays = Number(els.minDays.value);
 
   return state.rows.filter((row) => {
     if (!activeExchanges.has(row.exchange)) return false;
     if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
-    if (onlyChecked && !row.historyChecked) return false;
+    // Replaces the old separate "Только проверенные (есть история)" checkbox —
+    // a row with no successful history fetch has 0 days, so it's excluded by
+    // this alone whenever minDays > 0 (the default), same net effect with one
+    // control instead of two overlapping ones.
+    if (historyDays(row) < minDays) return false;
     if (onlyMatch && !rowMatchesStrategy(row)) return false;
     if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
     return true;
@@ -293,7 +297,6 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.maxRank,
   els.minOi,
   els.noNegatives,
-  els.onlyChecked,
   els.onlyMatch,
 ].forEach((el) => el.addEventListener('input', render));
 
