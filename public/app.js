@@ -64,6 +64,10 @@ const els = {
   favToggle: document.getElementById('favToggle'),
   selectAllExchanges: document.getElementById('selectAllExchanges'),
   deselectAllExchanges: document.getElementById('deselectAllExchanges'),
+  exDropdown: document.getElementById('exDropdown'),
+  exDropdownToggle: document.getElementById('exDropdownToggle'),
+  exDropdownPanel: document.getElementById('exDropdownPanel'),
+  exDropdownLabel: document.getElementById('exDropdownLabel'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -300,17 +304,54 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.onlyMatch,
 ].forEach((el) => el.addEventListener('input', render));
 
-document.querySelectorAll('.ex-filter').forEach((el) => el.addEventListener('change', render));
+const allExFilters = Array.from(document.querySelectorAll('.ex-filter'));
+
+function updateExDropdownLabel() {
+  const checkedCount = allExFilters.filter((el) => el.checked).length;
+  els.exDropdownLabel.textContent = `Биржи: ${checkedCount}/${allExFilters.length}`;
+}
+
+allExFilters.forEach((el) =>
+  el.addEventListener('change', () => {
+    updateExDropdownLabel();
+    render();
+  })
+);
 
 function setAllExchangeFilters(checked) {
-  document.querySelectorAll('.ex-filter').forEach((el) => {
+  allExFilters.forEach((el) => {
     el.checked = checked;
   });
+  updateExDropdownLabel();
   render();
 }
 
 els.selectAllExchanges.addEventListener('click', () => setAllExchangeFilters(true));
 els.deselectAllExchanges.addEventListener('click', () => setAllExchangeFilters(false));
+
+function setExDropdownOpen(open) {
+  els.exDropdownPanel.hidden = !open;
+  els.exDropdownToggle.setAttribute('aria-expanded', String(open));
+}
+
+els.exDropdownToggle.addEventListener('click', () => {
+  setExDropdownOpen(els.exDropdownPanel.hidden);
+});
+
+document.addEventListener('click', (e) => {
+  if (!els.exDropdownPanel.hidden && !els.exDropdown.contains(e.target)) {
+    setExDropdownOpen(false);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !els.exDropdownPanel.hidden) {
+    setExDropdownOpen(false);
+    els.exDropdownToggle.focus();
+  }
+});
+
+updateExDropdownLabel();
 
 els.mobileSortKey.addEventListener('change', () => {
   state.sortKey = els.mobileSortKey.value;
