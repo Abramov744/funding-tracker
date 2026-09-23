@@ -100,24 +100,13 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #0c0e12;
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 7px 12px;
-  font-size: 13px;
   font-family: inherit;
-  cursor: pointer;
-}
-
-.ex-dropdown-toggle:hover,
-.ex-dropdown-toggle:focus-visible {
-  border-color: var(--accent);
 }
 
 .ex-dropdown-arrow {
-  color: var(--muted);
+  color: #06130d;
   font-size: 10px;
+  opacity: 0.7;
   transition: transform 0.15s;
 }
 
