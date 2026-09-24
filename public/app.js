@@ -66,6 +66,9 @@ const els = {
   deselectAllExchanges: document.getElementById('deselectAllExchanges'),
   exDropdown: document.getElementById('exDropdown'),
   exDropdownToggle: document.getElementById('exDropdownToggle'),
+  filtersDropdown: document.getElementById('filtersDropdown'),
+  filtersDropdownToggle: document.getElementById('filtersDropdownToggle'),
+  filtersDropdownPanel: document.getElementById('filtersDropdownPanel'),
   exDropdownPanel: document.getElementById('exDropdownPanel'),
   exDropdownLabel: document.getElementById('exDropdownLabel'),
 };
@@ -329,26 +332,47 @@ function setAllExchangeFilters(checked) {
 els.selectAllExchanges.addEventListener('click', () => setAllExchangeFilters(true));
 els.deselectAllExchanges.addEventListener('click', () => setAllExchangeFilters(false));
 
-function setExDropdownOpen(open) {
-  els.exDropdownPanel.hidden = !open;
-  els.exDropdownToggle.setAttribute('aria-expanded', String(open));
+// Shared open/close wiring for the top-bar pill dropdowns (exchanges, filters):
+// click the toggle to open/close, click outside or Escape to close, and
+// opening one closes the other so they don't stack.
+const dropdowns = [
+  { container: els.exDropdown, toggle: els.exDropdownToggle, panel: els.exDropdownPanel },
+  { container: els.filtersDropdown, toggle: els.filtersDropdownToggle, panel: els.filtersDropdownPanel },
+];
+
+function setDropdownOpen(dropdown, open) {
+  dropdown.panel.hidden = !open;
+  dropdown.toggle.setAttribute('aria-expanded', String(open));
 }
 
-els.exDropdownToggle.addEventListener('click', () => {
-  setExDropdownOpen(els.exDropdownPanel.hidden);
+function closeAllDropdowns(except) {
+  dropdowns.forEach((d) => {
+    if (d !== except) setDropdownOpen(d, false);
+  });
+}
+
+dropdowns.forEach((d) => {
+  d.toggle.addEventListener('click', () => {
+    const opening = d.panel.hidden;
+    closeAllDropdowns(d);
+    setDropdownOpen(d, opening);
+  });
 });
 
 document.addEventListener('click', (e) => {
-  if (!els.exDropdownPanel.hidden && !els.exDropdown.contains(e.target)) {
-    setExDropdownOpen(false);
-  }
+  dropdowns.forEach((d) => {
+    if (!d.panel.hidden && !d.container.contains(e.target)) setDropdownOpen(d, false);
+  });
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !els.exDropdownPanel.hidden) {
-    setExDropdownOpen(false);
-    els.exDropdownToggle.focus();
-  }
+  if (e.key !== 'Escape') return;
+  dropdowns.forEach((d) => {
+    if (!d.panel.hidden) {
+      setDropdownOpen(d, false);
+      d.toggle.focus();
+    }
+  });
 });
 
 updateExDropdownLabel();
