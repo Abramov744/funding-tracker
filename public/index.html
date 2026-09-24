@@ -21,64 +21,72 @@
   </header>
 
   <section class="controls">
-    <div class="control-group group-exchanges">
-      <div class="ex-dropdown" id="exDropdown">
-        <button type="button" id="exDropdownToggle" class="ex-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
-          <span id="exDropdownLabel">Биржи</span>
-          <span class="ex-dropdown-arrow">▾</span>
-        </button>
-        <div class="ex-dropdown-panel" id="exDropdownPanel" hidden>
-          <div class="ex-dropdown-actions">
-            <button type="button" id="selectAllExchanges" class="link-btn">Выделить все</button>
-            <button type="button" id="deselectAllExchanges" class="link-btn">Снять все</button>
+    <div class="top-bar">
+      <div class="search-pill">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="search" placeholder="Поиск монеты" />
+      </div>
+
+      <button id="refreshBtn">Обновить сейчас</button>
+      <button type="button" id="favToggle" class="fav-toggle" aria-pressed="false">☆ Избранное</button>
+
+      <div class="top-bar-right">
+        <div class="dropdown" id="filtersDropdown">
+          <button type="button" id="filtersDropdownToggle" class="pill-toggle" aria-haspopup="true" aria-expanded="false">
+            <span id="filtersDropdownLabel">Фильтры</span>
+            <span class="pill-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel filters-panel" id="filtersDropdownPanel" hidden>
+            <label>Мин. средний APR % <input type="number" id="minAvgApr" value="50" step="1" /></label>
+            <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
+            <label>Мин. дней истории <input type="number" id="minDays" value="7" step="1" /></label>
+            <label>Макс. ранг по капитализации <input type="number" id="maxRank" placeholder="напр. 300" /></label>
+            <label>Мин. открытый интерес (тыс. $) <input type="number" id="minOi" placeholder="напр. 1000" /></label>
+            <label class="checkbox-row"><input type="checkbox" id="noNegatives" checked /> Без отрицательных в окне</label>
+            <label class="checkbox-row"><input type="checkbox" id="onlyMatch" /> Только подходящие под стратегию</label>
           </div>
-          <div class="ex-dropdown-columns">
-            <div class="ex-dropdown-group">
-              <span class="ex-dropdown-group-title">CEX</span>
-              <label><input type="checkbox" class="ex-filter" value="bingx" checked /> BingX</label>
-              <label><input type="checkbox" class="ex-filter" value="bitget" checked /> Bitget</label>
-              <label><input type="checkbox" class="ex-filter" value="bybit" checked /> Bybit</label>
-              <label><input type="checkbox" class="ex-filter" value="gate" checked /> Gate.io</label>
-              <label><input type="checkbox" class="ex-filter" value="kucoin" checked /> KuCoin</label>
-              <label><input type="checkbox" class="ex-filter" value="mexc" checked /> MEXC</label>
-              <label><input type="checkbox" class="ex-filter" value="okx" checked /> OKX</label>
+        </div>
+
+        <div class="dropdown" id="exDropdown">
+          <button type="button" id="exDropdownToggle" class="pill-toggle" aria-haspopup="true" aria-expanded="false">
+            <span id="exDropdownLabel">Биржи</span>
+            <span class="pill-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel ex-dropdown-panel" id="exDropdownPanel" hidden>
+            <div class="ex-dropdown-actions">
+              <button type="button" id="selectAllExchanges" class="link-btn">Выделить все</button>
+              <button type="button" id="deselectAllExchanges" class="link-btn">Снять все</button>
             </div>
-            <div class="ex-dropdown-group">
-              <span class="ex-dropdown-group-title">DEX</span>
-              <label><input type="checkbox" class="ex-filter" value="aster" checked /> Aster</label>
-              <label><input type="checkbox" class="ex-filter" value="dydx" checked /> dYdX</label>
-              <label><input type="checkbox" class="ex-filter" value="edgex" checked /> edgeX</label>
-              <label><input type="checkbox" class="ex-filter" value="extended" checked /> Extended</label>
-              <label><input type="checkbox" class="ex-filter" value="grvt" checked /> GRVT</label>
-              <label><input type="checkbox" class="ex-filter" value="hyperliquid" checked /> Hyperliquid</label>
-              <label><input type="checkbox" class="ex-filter" value="lighter" checked /> Lighter</label>
-              <label><input type="checkbox" class="ex-filter" value="orderly" checked /> Orderly</label>
-              <label><input type="checkbox" class="ex-filter" value="pacifica" checked /> Pacifica</label>
-              <label><input type="checkbox" class="ex-filter" value="paradex" checked /> Paradex</label>
+            <div class="ex-dropdown-columns">
+              <div class="ex-dropdown-group">
+                <span class="ex-dropdown-group-title">CEX</span>
+                <label><input type="checkbox" class="ex-filter" value="bingx" checked /> BingX</label>
+                <label><input type="checkbox" class="ex-filter" value="bitget" checked /> Bitget</label>
+                <label><input type="checkbox" class="ex-filter" value="bybit" checked /> Bybit</label>
+                <label><input type="checkbox" class="ex-filter" value="gate" checked /> Gate.io</label>
+                <label><input type="checkbox" class="ex-filter" value="kucoin" checked /> KuCoin</label>
+                <label><input type="checkbox" class="ex-filter" value="mexc" checked /> MEXC</label>
+                <label><input type="checkbox" class="ex-filter" value="okx" checked /> OKX</label>
+              </div>
+              <div class="ex-dropdown-group">
+                <span class="ex-dropdown-group-title">DEX</span>
+                <label><input type="checkbox" class="ex-filter" value="aster" checked /> Aster</label>
+                <label><input type="checkbox" class="ex-filter" value="dydx" checked /> dYdX</label>
+                <label><input type="checkbox" class="ex-filter" value="edgex" checked /> edgeX</label>
+                <label><input type="checkbox" class="ex-filter" value="extended" checked /> Extended</label>
+                <label><input type="checkbox" class="ex-filter" value="grvt" checked /> GRVT</label>
+                <label><input type="checkbox" class="ex-filter" value="hyperliquid" checked /> Hyperliquid</label>
+                <label><input type="checkbox" class="ex-filter" value="lighter" checked /> Lighter</label>
+                <label><input type="checkbox" class="ex-filter" value="orderly" checked /> Orderly</label>
+                <label><input type="checkbox" class="ex-filter" value="pacifica" checked /> Pacifica</label>
+                <label><input type="checkbox" class="ex-filter" value="paradex" checked /> Paradex</label>
+              </div>
             </div>
           </div>
         </div>
+
+        <span id="status" class="status"></span>
       </div>
-    </div>
-
-    <div class="control-group group-search">
-      <label>Поиск монеты <input type="text" id="search" placeholder="напр. BTC" /></label>
-    </div>
-
-    <div class="control-group group-filters">
-      <label>Мин. средний APR % <input type="number" id="minAvgApr" value="50" step="1" /></label>
-      <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="90" step="1" /></label>
-      <label>Мин. дней истории <input type="number" id="minDays" value="7" step="1" /></label>
-      <label>Макс. ранг по капитализации <input type="number" id="maxRank" placeholder="напр. 300" /></label>
-      <label>Мин. открытый интерес (тыс. $) <input type="number" id="minOi" placeholder="напр. 1000" /></label>
-      <label><input type="checkbox" id="noNegatives" checked /> Без отрицательных в окне</label>
-      <label><input type="checkbox" id="onlyMatch" /> Только подходящие под стратегию</label>
-    </div>
-
-    <div class="control-group group-actions">
-      <button id="refreshBtn">Обновить сейчас</button>
-      <button type="button" id="favToggle" class="fav-toggle" aria-pressed="false">☆ Избранное</button>
-      <span id="status" class="status"></span>
     </div>
   </section>
 

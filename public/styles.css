@@ -45,15 +45,49 @@ header h1 {
 }
 
 .controls {
+  margin-bottom: 20px;
+}
+
+.top-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 12px;
+  align-items: center;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.search-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
-  align-items: center;
+  border-radius: 9999px;
+  padding: 10px 16px;
+  flex: 0 1 320px;
+  min-width: 200px;
+}
+
+.search-icon {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.search-pill input[type="text"] {
+  flex: 1;
+  width: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
 }
 
 .control-group {
@@ -92,32 +126,44 @@ header h1 {
   white-space: nowrap;
 }
 
-.ex-dropdown {
+.dropdown {
   position: relative;
 }
 
-.ex-dropdown-toggle {
+.pill-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9999px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
   font-family: inherit;
+  cursor: pointer;
 }
 
-.ex-dropdown-arrow {
-  color: #06130d;
+.pill-toggle:hover,
+.pill-toggle:focus-visible {
+  border-color: var(--accent);
+}
+
+.pill-arrow {
+  color: var(--muted);
   font-size: 10px;
-  opacity: 0.7;
   transition: transform 0.15s;
 }
 
-.ex-dropdown-toggle[aria-expanded="true"] .ex-dropdown-arrow {
+.pill-toggle[aria-expanded="true"] .pill-arrow {
   transform: rotate(180deg);
 }
 
-.ex-dropdown-panel {
+.dropdown-panel {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  top: calc(100% + 8px);
+  right: 0;
   z-index: 20;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -127,11 +173,36 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.dropdown-panel[hidden] {
+  display: none;
+}
+
+.ex-dropdown-panel {
   min-width: 320px;
 }
 
-.ex-dropdown-panel[hidden] {
-  display: none;
+.filters-panel {
+  min-width: 300px;
+}
+
+.filters-panel label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.filters-panel label.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filters-panel input[type="number"] {
+  width: 100%;
 }
 
 .ex-dropdown-actions {
@@ -523,17 +594,34 @@ footer {
   header h1 { font-size: 19px; }
   .subtitle { font-size: 12.5px; margin-bottom: 14px; }
 
-  .controls {
+  .top-bar {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
-    padding: 14px;
+    gap: 10px;
   }
 
-  .ex-dropdown-panel {
+  .search-pill {
+    flex: none;
+  }
+
+  .top-bar-right {
+    flex-direction: column;
+  }
+
+  .dropdown,
+  .pill-toggle {
+    width: 100%;
+  }
+
+  .pill-toggle {
+    justify-content: space-between;
+  }
+
+  .dropdown-panel {
     position: static;
     box-shadow: none;
     min-width: 0;
+    width: 100%;
     margin-top: 8px;
   }
 
@@ -551,35 +639,14 @@ footer {
     font-size: 13px;
   }
 
-  .group-search,
-  .group-filters {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .group-search label,
-  .group-filters label {
-    flex-direction: column;
-    align-items: stretch;
+  .filters-panel label {
     gap: 6px;
-  }
-
-  .group-filters label:has(input[type="checkbox"]) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
   }
 
   input[type="number"],
   input[type="text"] {
     width: 100%;
     padding: 8px;
-  }
-
-  .group-actions {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   #refreshBtn,
