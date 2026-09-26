@@ -23,12 +23,16 @@ function saveFavorites(favorites) {
 
 const state = {
   rows: [],
+  spreadRows: [],
   updatedAt: null,
   refreshing: false,
   sortKey: 'avgAprPct',
   sortDir: 'desc',
+  spreadSortKey: 'avgAprPct',
+  spreadSortDir: 'desc',
   favorites: loadFavorites(),
   showFavoritesOnly: false,
+  activeTab: 'funding',
 };
 
 const els = {
@@ -71,6 +75,27 @@ const els = {
   filtersDropdownPanel: document.getElementById('filtersDropdownPanel'),
   exDropdownPanel: document.getElementById('exDropdownPanel'),
   exDropdownLabel: document.getElementById('exDropdownLabel'),
+
+  // --- Futures-futures spread tab ---
+  fundingTabBtn: document.getElementById('fundingTabBtn'),
+  spreadTabBtn: document.getElementById('spreadTabBtn'),
+  fundingTabPanel: document.getElementById('fundingTabPanel'),
+  spreadTabPanel: document.getElementById('spreadTabPanel'),
+  spreadTbody: document.getElementById('spreadTbody'),
+  spreadTable: document.getElementById('spreadTable'),
+  spreadEmptyState: document.getElementById('spreadEmptyState'),
+  spreadErrorBanner: document.getElementById('spreadErrorBanner'),
+  spreadMobileSortKey: document.getElementById('spreadMobileSortKey'),
+  spreadMobileSortDir: document.getElementById('spreadMobileSortDir'),
+  spreadFiltersDropdown: document.getElementById('spreadFiltersDropdown'),
+  spreadFiltersDropdownToggle: document.getElementById('spreadFiltersDropdownToggle'),
+  spreadFiltersDropdownPanel: document.getElementById('spreadFiltersDropdownPanel'),
+  spreadMinAvgApr: document.getElementById('spreadMinAvgApr'),
+  spreadMinPositiveRatio: document.getElementById('spreadMinPositiveRatio'),
+  spreadMinDays: document.getElementById('spreadMinDays'),
+  spreadMaxRank: document.getElementById('spreadMaxRank'),
+  spreadMinOi: document.getElementById('spreadMinOi'),
+  spreadNoNegatives: document.getElementById('spreadNoNegatives'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -165,8 +190,9 @@ function getFilteredRows() {
   });
 }
 
-function sortRows(rows) {
-  const { sortKey, sortDir } = state;
+// Generic sort usable for both tables — which state fields it reads/writes is
+// the only difference, passed in rather than hardcoded.
+function sortByKey(rows, sortKey, sortDir) {
   const dir = sortDir === 'asc' ? 1 : -1;
   return [...rows].sort((a, b) => {
     let av = a[sortKey];
@@ -178,8 +204,12 @@ function sortRows(rows) {
   });
 }
 
+function sortRows(rows) {
+  return sortByKey(rows, state.sortKey, state.sortDir);
+}
+
 function updateSortArrows() {
-  document.querySelectorAll('th[data-key]').forEach((th) => {
+  document.querySelectorAll('#table th[data-key]').forEach((th) => {
     const arrow = th.querySelector('.sort-arrow');
     if (!arrow) return;
     arrow.textContent = th.dataset.key === state.sortKey ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
@@ -190,6 +220,94 @@ function updateSortArrows() {
   els.mobileSortDir.textContent = state.sortDir === 'asc' ? '▲' : '▼';
 }
 
+// --- Futures-futures spread tab: filtering/sorting/rendering ----------------
+// Both legs are already normalized to a common hourly basis in lib/spreads.js,
+// so `periods` here always means hours, not "whatever this exchange's own
+// funding interval is" — the days conversion is a plain /24, no intervalHours.
+function spreadHistoryDays(row) {
+  return row.periods / 24;
+}
+
+function fmtSpreadPeriods(row) {
+  return `${row.periods} (${spreadHistoryDays(row).toFixed(1)} дн.)`;
+}
+
+function spreadRowMatchesStrategy(row) {
+  const minAvgApr = Number(els.spreadMinAvgApr.value);
+  const minRatio = Number(els.spreadMinPositiveRatio.value) / 100;
+  if (row.avgAprPct === null || row.avgAprPct < minAvgApr) return false;
+  if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
+  if (els.spreadNoNegatives.checked && (row.minAprPct === null || row.minAprPct < 0)) return false;
+  const maxRank = els.spreadMaxRank.value ? Number(els.spreadMaxRank.value) : null;
+  if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
+  const minOi = els.spreadMinOi.value ? Number(els.spreadMinOi.value) * 1000 : null;
+  if (minOi !== null) {
+    if (row.shortOpenInterestUsd === null || row.shortOpenInterestUsd === undefined || row.shortOpenInterestUsd < minOi) return false;
+    if (row.longOpenInterestUsd === null || row.longOpenInterestUsd === undefined || row.longOpenInterestUsd < minOi) return false;
+  }
+  return true;
+}
+
+function getFilteredSpreadRows() {
+  const activeExchanges = new Set(
+    Array.from(document.querySelectorAll('.ex-filter:checked')).map((el) => el.value)
+  );
+  const search = els.search.value.trim().toUpperCase();
+  const minDays = Number(els.spreadMinDays.value);
+
+  return state.spreadRows.filter((row) => {
+    if (!activeExchanges.has(row.shortExchange) || !activeExchanges.has(row.longExchange)) return false;
+    if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
+    if (spreadHistoryDays(row) < minDays) return false;
+    if (!spreadRowMatchesStrategy(row)) return false;
+    return true;
+  });
+}
+
+function sortSpreadRows(rows) {
+  return sortByKey(rows, state.spreadSortKey, state.spreadSortDir);
+}
+
+function updateSpreadSortArrows() {
+  document.querySelectorAll('#spreadTable th[data-key]').forEach((th) => {
+    const arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    arrow.textContent = th.dataset.key === state.spreadSortKey ? (state.spreadSortDir === 'asc' ? '▲' : '▼') : '';
+  });
+  els.spreadMobileSortKey.value = state.spreadSortKey;
+  els.spreadMobileSortDir.textContent = state.spreadSortDir === 'asc' ? '▲' : '▼';
+}
+
+function renderSpreadTable() {
+  updateSpreadSortArrows();
+  const rows = sortSpreadRows(getFilteredSpreadRows());
+  els.spreadTbody.innerHTML = '';
+  els.spreadEmptyState.hidden = rows.length > 0;
+  els.spreadTable.hidden = rows.length === 0;
+
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    const aprClass = row.spreadAprPct > 0 ? 'positive' : row.spreadAprPct < 0 ? 'negative' : '';
+
+    tr.innerHTML = `
+      <td class="cell-coin" data-label="Монета">${row.baseAsset}</td>
+      <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
+      <td class="cell-exchange" data-label="Шорт (биржа)">${row.shortExchangeLabel}</td>
+      <td class="positive" data-label="Ставка шорт">${fmtPct(row.shortRate)}</td>
+      <td data-label="OI шорт">${fmtCompactUsd(row.shortOpenInterestUsd)}</td>
+      <td class="cell-exchange" data-label="Лонг (биржа)">${row.longExchangeLabel}</td>
+      <td class="${row.longRate < 0 ? 'positive' : ''}" data-label="Ставка лонг">${fmtPct(row.longRate)}</td>
+      <td data-label="OI лонг">${fmtCompactUsd(row.longOpenInterestUsd)}</td>
+      <td class="${aprClass}" data-label="Спред APR">${fmtAprPct(row.spreadAprPct)}</td>
+      <td data-label="Периодов">${fmtSpreadPeriods(row)}</td>
+      <td data-label="% выигрышных">${fmtRatio(row.positiveRatio)}</td>
+      <td class="${row.minAprPct < 0 ? 'negative' : ''}" data-label="Мин. спред APR">${fmtAprPct(row.minAprPct)}</td>
+      <td data-label="Ср. спред APR">${fmtAprPct(row.avgAprPct)}</td>
+    `;
+    els.spreadTbody.appendChild(tr);
+  }
+}
+
 function updateFavToggle() {
   const count = state.favorites.size;
   els.favToggle.textContent = `${state.showFavoritesOnly ? '★' : '☆'} Избранное${count ? ` (${count})` : ''}`;
@@ -198,6 +316,11 @@ function updateFavToggle() {
 }
 
 function render() {
+  renderFundingTable();
+  renderSpreadTable();
+}
+
+function renderFundingTable() {
   updateSortArrows();
   updateFavToggle();
   const rows = sortRows(getFilteredRows());
@@ -256,12 +379,27 @@ async function loadData() {
   state.refreshing = Boolean(data.refreshing);
 
   const errorEntries = Object.entries(data.errors || {});
-  if (errorEntries.length) {
-    els.errorBanner.hidden = false;
-    els.errorBanner.textContent =
-      'Ошибки при опросе бирж: ' + errorEntries.map(([ex, msg]) => `${ex} — ${msg}`).join(' · ');
-  } else {
-    els.errorBanner.hidden = true;
+  const errorText = errorEntries.length
+    ? 'Ошибки при опросе бирж: ' + errorEntries.map(([ex, msg]) => `${ex} — ${msg}`).join(' · ')
+    : '';
+  els.errorBanner.hidden = !errorText;
+  els.errorBanner.textContent = errorText;
+  // Same underlying per-exchange errors as /api/funding (both are views over
+  // the same cache), shown again here since the spread tab has its own banner.
+  els.spreadErrorBanner.hidden = !errorText;
+  els.spreadErrorBanner.textContent = errorText;
+
+  // Independent of /api/funding — a spread-fetch failure shouldn't block the
+  // funding table from rendering, or vice versa.
+  try {
+    const spreadRes = await fetch('/api/spreads');
+    if (spreadRes.ok) {
+      const spreadData = await spreadRes.json();
+      state.spreadRows = spreadData.rows || [];
+    }
+  } catch {
+    // Leaves state.spreadRows as whatever it was last cycle rather than
+    // blanking the tab over one failed request.
   }
 
   render();
@@ -283,7 +421,7 @@ async function pollUntilIdle() {
   }
 }
 
-document.querySelectorAll('th[data-key]').forEach((th) => {
+document.querySelectorAll('#table th[data-key]').forEach((th) => {
   th.addEventListener('click', () => {
     const key = th.dataset.key;
     if (state.sortKey === key) {
@@ -291,6 +429,19 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
     } else {
       state.sortKey = key;
       state.sortDir = 'desc';
+    }
+    render();
+  });
+});
+
+document.querySelectorAll('#spreadTable th[data-key]').forEach((th) => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (state.spreadSortKey === key) {
+      state.spreadSortDir = state.spreadSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      state.spreadSortKey = key;
+      state.spreadSortDir = 'desc';
     }
     render();
   });
@@ -305,6 +456,12 @@ document.querySelectorAll('th[data-key]').forEach((th) => {
   els.minOi,
   els.noNegatives,
   els.onlyMatch,
+  els.spreadMinAvgApr,
+  els.spreadMinPositiveRatio,
+  els.spreadMinDays,
+  els.spreadMaxRank,
+  els.spreadMinOi,
+  els.spreadNoNegatives,
 ].forEach((el) => el.addEventListener('input', render));
 
 const allExFilters = Array.from(document.querySelectorAll('.ex-filter'));
@@ -338,6 +495,7 @@ els.deselectAllExchanges.addEventListener('click', () => setAllExchangeFilters(f
 const dropdowns = [
   { container: els.exDropdown, toggle: els.exDropdownToggle, panel: els.exDropdownPanel },
   { container: els.filtersDropdown, toggle: els.filtersDropdownToggle, panel: els.filtersDropdownPanel },
+  { container: els.spreadFiltersDropdown, toggle: els.spreadFiltersDropdownToggle, panel: els.spreadFiltersDropdownPanel },
 ];
 
 function setDropdownOpen(dropdown, open) {
@@ -386,6 +544,34 @@ els.mobileSortDir.addEventListener('click', () => {
   state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
   render();
 });
+
+els.spreadMobileSortKey.addEventListener('change', () => {
+  state.spreadSortKey = els.spreadMobileSortKey.value;
+  render();
+});
+
+els.spreadMobileSortDir.addEventListener('click', () => {
+  state.spreadSortDir = state.spreadSortDir === 'asc' ? 'desc' : 'asc';
+  render();
+});
+
+// --- Tab switching (spot+short funding table vs. futures-futures spread) ---
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  els.fundingTabBtn.classList.toggle('active', tab === 'funding');
+  els.spreadTabBtn.classList.toggle('active', tab === 'spread');
+  els.fundingTabPanel.hidden = tab !== 'funding';
+  els.spreadTabPanel.hidden = tab !== 'spread';
+  els.filtersDropdown.hidden = tab !== 'funding';
+  els.spreadFiltersDropdown.hidden = tab !== 'spread';
+  // Favorites are keyed by baseAsset for the single-leg table only — not
+  // meaningful for a (coin, exchange-pair) spread row yet.
+  els.favToggle.hidden = tab !== 'funding';
+  closeAllDropdowns();
+}
+
+els.fundingTabBtn.addEventListener('click', () => setActiveTab('funding'));
+els.spreadTabBtn.addEventListener('click', () => setActiveTab('spread'));
 
 els.refreshBtn.addEventListener('click', async () => {
   const originalLabel = els.refreshBtn.textContent;

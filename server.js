@@ -79,6 +79,20 @@ app.get('/api/funding', (req, res) => {
   });
 });
 
+// Futures-futures funding-rate spread tab: long one exchange's perp, short
+// another's on the same coin — delta-neutral, no spot leg. Computed as a
+// derived pass over the same cache (lib/spreads.js), so it shares
+// updatedAt/refreshing/errors with /api/funding rather than tracking its own.
+app.get('/api/spreads', (req, res) => {
+  const state = cache.getState();
+  res.json({
+    updatedAt: state.updatedAt,
+    refreshing: state.refreshing,
+    errors: state.errors,
+    rows: state.spreadRows,
+  });
+});
+
 // Kicks off a refresh and returns immediately rather than waiting for it to
 // finish — with fourteen exchanges now (some needing many per-symbol requests,
 // throttled on top of that for rate-limit-sensitive ones like Hyperliquid),
