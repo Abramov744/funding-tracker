@@ -282,6 +282,34 @@ button:disabled:hover { opacity: 0.55; }
   font-size: 13px;
 }
 
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 4px;
+  margin-right: 20px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.tab-btn:hover { color: var(--text); opacity: 1; }
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
