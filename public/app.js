@@ -286,6 +286,11 @@ function getFilteredSpreadRows() {
   return state.spreadRows.filter((row) => {
     if (!activeExchanges.has(row.shortExchange) || !activeExchanges.has(row.longExchange)) return false;
     if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
+    if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
+    // Same exemption as the funding table: a favorited coin stays visible
+    // here too, regardless of the strategy/threshold filters, until it's
+    // removed from favorites.
+    if (state.favorites.has(row.baseAsset)) return true;
     if (spreadHistoryDays(row) < minDays) return false;
     if (!spreadRowMatchesStrategy(row)) return false;
     return true;
@@ -316,9 +321,11 @@ function renderSpreadTable() {
   for (const row of rows) {
     const tr = document.createElement('tr');
     const aprClass = row.spreadAprPct > 0 ? 'positive' : row.spreadAprPct < 0 ? 'negative' : '';
+    const isFav = state.favorites.has(row.baseAsset);
 
     tr.innerHTML = `
       <td class="cell-coin" data-label="Монета">
+        <button type="button" class="fav-star${isFav ? ' active' : ''}" data-symbol="${row.baseAsset}" aria-pressed="${isFav}" aria-label="${isFav ? 'Убрать из избранного' : 'В избранное'}">${isFav ? '★' : '☆'}</button>
         <button type="button" class="coin-link" data-base="${row.baseAsset}" data-short-exchange="${row.shortExchange}" data-short-label="${row.shortExchangeLabel}" data-short-symbol="${row.shortSymbol}" data-short-interval="${row.shortIntervalHours ?? ''}" data-long-exchange="${row.longExchange}" data-long-label="${row.longExchangeLabel}" data-long-symbol="${row.longSymbol}" data-long-interval="${row.longIntervalHours ?? ''}">${row.baseAsset}</button>
       </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
@@ -346,13 +353,13 @@ function updateFavToggle() {
 }
 
 function render() {
+  updateFavToggle();
   renderFundingTable();
   renderSpreadTable();
 }
 
 function renderFundingTable() {
   updateSortArrows();
-  updateFavToggle();
   const rows = sortRows(getFilteredRows());
   els.tbody.innerHTML = '';
   els.emptyState.hidden = rows.length > 0;
@@ -594,9 +601,6 @@ function setActiveTab(tab) {
   els.spreadTabPanel.hidden = tab !== 'spread';
   els.filtersDropdown.hidden = tab !== 'funding';
   els.spreadFiltersDropdown.hidden = tab !== 'spread';
-  // Favorites are keyed by baseAsset for the single-leg table only — not
-  // meaningful for a (coin, exchange-pair) spread row yet.
-  els.favToggle.hidden = tab !== 'funding';
   closeAllDropdowns();
 }
 
@@ -1107,6 +1111,20 @@ els.favToggle.addEventListener('click', () => {
 });
 
 els.spreadTbody.addEventListener('click', (e) => {
+  const starBtn = e.target.closest('.fav-star');
+  if (starBtn) {
+    const symbol = starBtn.dataset.symbol;
+    if (state.favorites.has(symbol)) {
+      state.favorites.delete(symbol);
+      removeFavorite(symbol);
+    } else {
+      state.favorites.add(symbol);
+      addFavorite(symbol);
+    }
+    render();
+    return;
+  }
+
   const btn = e.target.closest('.coin-link');
   if (!btn) return;
   const d = btn.dataset;
