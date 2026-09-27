@@ -108,6 +108,16 @@ const els = {
   spreadMaxRank: document.getElementById('spreadMaxRank'),
   spreadMinOi: document.getElementById('spreadMinOi'),
   spreadNoNegatives: document.getElementById('spreadNoNegatives'),
+
+  // --- Spread pair funding-history chart popup ---
+  spreadChartOverlay: document.getElementById('spreadChartOverlay'),
+  spreadChartClose: document.getElementById('spreadChartClose'),
+  spreadChartTitle: document.getElementById('spreadChartTitle'),
+  spreadChartSubtitle: document.getElementById('spreadChartSubtitle'),
+  spreadChartLegend: document.getElementById('spreadChartLegend'),
+  spreadChartBody: document.getElementById('spreadChartBody'),
+  spreadChartCanvas: document.getElementById('spreadChartCanvas'),
+  spreadChartMessage: document.getElementById('spreadChartMessage'),
 };
 
 function fmtPct(v, digits = 4) {
@@ -308,7 +318,9 @@ function renderSpreadTable() {
     const aprClass = row.spreadAprPct > 0 ? 'positive' : row.spreadAprPct < 0 ? 'negative' : '';
 
     tr.innerHTML = `
-      <td class="cell-coin" data-label="Монета">${row.baseAsset}</td>
+      <td class="cell-coin" data-label="Монета">
+        <button type="button" class="coin-link" data-base="${row.baseAsset}" data-short-exchange="${row.shortExchange}" data-short-label="${row.shortExchangeLabel}" data-short-symbol="${row.shortSymbol}" data-short-interval="${row.shortIntervalHours ?? ''}" data-long-exchange="${row.longExchange}" data-long-label="${row.longExchangeLabel}" data-long-symbol="${row.longSymbol}" data-long-interval="${row.longIntervalHours ?? ''}">${row.baseAsset}</button>
+      </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="cell-exchange" data-label="Шорт (биржа)">${row.shortExchangeLabel}</td>
       <td class="positive" data-label="Ставка шорт">${fmtPct(row.shortRate)}</td>
@@ -913,6 +925,160 @@ function openCoinChart(row) {
   loadSpotVenues(row.baseAsset, row.price);
 }
 
+// --- Spread pair funding-history chart popup (click a coin name in the
+// futures-futures tab) — one canvas, two overlaid line series (short leg's
+// exchange vs. long leg's exchange), so the two rates that make up the
+// spread can be compared visually over the same 30-day window. Plotted on a
+// shared real-time x-axis (not by index) since the two legs' exchanges
+// usually settle on different intervals (e.g. 1h vs 8h) and so have very
+// different point counts/spacing.
+const SPREAD_CHART_COLORS = { short: '#3ddc97', long: '#5b8dee' };
+
+function drawSpreadPairChart(shortHistory, longHistory) {
+  const canvas = els.spreadChartCanvas;
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth || canvas.width;
+  const H = 320;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssWidth * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const W = cssWidth;
+  const padL = 56;
+  const padR = 12;
+  const padT = 14;
+  const padB = 28;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const series = [shortHistory, longHistory].filter((s) => s && s.length);
+  if (series.length === 0) return;
+
+  const allTimes = series.flatMap((s) => s.map((h) => h.time));
+  const minTime = Math.min(...allTimes);
+  const maxTime = Math.max(...allTimes);
+
+  const allRates = series.flatMap((s) => s.map((h) => h.rate * 100));
+  const maxAbs = Math.max(0.001, ...allRates.map((r) => Math.abs(r)));
+  const yMax = maxAbs * 1.15;
+  const yMin = -yMax;
+
+  const xFor = (t) => (maxTime === minTime ? padL + plotW / 2 : padL + (plotW * (t - minTime)) / (maxTime - minTime));
+  const yFor = (r) => padT + plotH * (1 - (r - yMin) / (yMax - yMin));
+  const zeroY = yFor(0);
+
+  // grid + y-axis labels
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillStyle = '#8a90a0';
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const ySteps = 4;
+  for (let i = -ySteps; i <= ySteps; i++) {
+    const v = (yMax / ySteps) * i;
+    const y = yFor(v);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(W - padR, y);
+    ctx.stroke();
+    ctx.fillText(v.toFixed(3) + '%', padL - 8, y);
+  }
+
+  // zero line, emphasized
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(padL, zeroY);
+  ctx.lineTo(W - padR, zeroY);
+  ctx.stroke();
+
+  function drawLine(history, color) {
+    if (!history || history.length === 0) return;
+    ctx.beginPath();
+    history.forEach((h, i) => {
+      const x = xFor(h.time);
+      const y = yFor(h.rate * 100);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.75;
+    ctx.stroke();
+
+    const last = history[history.length - 1];
+    ctx.beginPath();
+    ctx.arc(xFor(last.time), yFor(last.rate * 100), 3, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  drawLine(shortHistory, SPREAD_CHART_COLORS.short);
+  drawLine(longHistory, SPREAD_CHART_COLORS.long);
+
+  // x-axis date labels (first, middle, last of the overall time range)
+  ctx.fillStyle = '#8a90a0';
+  ctx.textBaseline = 'top';
+  [minTime, (minTime + maxTime) / 2, maxTime].forEach((t, i) => {
+    const x = xFor(t);
+    const d = new Date(t);
+    const label = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    ctx.textAlign = i === 0 ? 'left' : i === 2 ? 'right' : 'center';
+    ctx.fillText(label, x, H - padB + 6);
+  });
+}
+
+function closeSpreadChart() {
+  els.spreadChartOverlay.hidden = true;
+}
+
+async function loadSpreadPairChart(data) {
+  els.spreadChartMessage.hidden = true;
+  els.spreadChartBody.hidden = false;
+  els.spreadChartCanvas.getContext('2d').clearRect(0, 0, els.spreadChartCanvas.width, els.spreadChartCanvas.height);
+
+  const fetchLeg = async (exchange, symbol, intervalHours) => {
+    const params = new URLSearchParams({ exchange, symbol });
+    if (intervalHours) params.set('intervalHours', intervalHours);
+    const res = await fetch(`/api/history?${params.toString()}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json.history || [];
+  };
+
+  try {
+    const [shortHistory, longHistory] = await Promise.all([
+      fetchLeg(data.shortExchange, data.shortSymbol, data.shortIntervalHours),
+      fetchLeg(data.longExchange, data.longSymbol, data.longIntervalHours),
+    ]);
+
+    if (shortHistory.length === 0 && longHistory.length === 0) {
+      els.spreadChartBody.hidden = true;
+      els.spreadChartMessage.hidden = false;
+      els.spreadChartMessage.textContent = 'Нет данных по истории фандинга за последние 30 дней.';
+      return;
+    }
+
+    drawSpreadPairChart(shortHistory, longHistory);
+  } catch (err) {
+    els.spreadChartBody.hidden = true;
+    els.spreadChartMessage.hidden = false;
+    els.spreadChartMessage.textContent = 'Не удалось загрузить историю: ' + (err.message || err);
+  }
+}
+
+function openSpreadChart(data) {
+  els.spreadChartOverlay.hidden = false;
+  els.spreadChartTitle.textContent = `${data.baseAsset} — ставка фандинга за 30 дней`;
+  els.spreadChartSubtitle.textContent = `${data.shortLabel} (шорт) · ${data.shortSymbol}  vs  ${data.longLabel} (лонг) · ${data.longSymbol}`;
+  els.spreadChartLegend.innerHTML = `
+    <span><span class="dot" style="background:${SPREAD_CHART_COLORS.short}"></span>${data.shortLabel} — шорт</span>
+    <span><span class="dot" style="background:${SPREAD_CHART_COLORS.long}"></span>${data.longLabel} — лонг</span>
+  `;
+  loadSpreadPairChart(data);
+}
+
 els.tbody.addEventListener('click', (e) => {
   const starBtn = e.target.closest('.fav-star');
   if (starBtn) {
@@ -940,12 +1106,34 @@ els.favToggle.addEventListener('click', () => {
   render();
 });
 
+els.spreadTbody.addEventListener('click', (e) => {
+  const btn = e.target.closest('.coin-link');
+  if (!btn) return;
+  const d = btn.dataset;
+  openSpreadChart({
+    baseAsset: d.base,
+    shortExchange: d.shortExchange,
+    shortSymbol: d.shortSymbol,
+    shortIntervalHours: d.shortInterval,
+    shortLabel: d.shortLabel,
+    longExchange: d.longExchange,
+    longSymbol: d.longSymbol,
+    longIntervalHours: d.longInterval,
+    longLabel: d.longLabel,
+  });
+});
+
 els.chartClose.addEventListener('click', closeChart);
 els.chartOverlay.addEventListener('click', (e) => {
   if (e.target === els.chartOverlay) closeChart();
 });
+els.spreadChartClose.addEventListener('click', closeSpreadChart);
+els.spreadChartOverlay.addEventListener('click', (e) => {
+  if (e.target === els.spreadChartOverlay) closeSpreadChart();
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !els.chartOverlay.hidden) closeChart();
+  if (e.key === 'Escape' && !els.spreadChartOverlay.hidden) closeSpreadChart();
 });
 
 loadFavorites().then((favorites) => {

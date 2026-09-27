@@ -489,6 +489,27 @@ footer {
   font-size: 13px;
 }
 
+.spread-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: -8px 0 16px;
+  font-size: 13px;
+}
+
+.spread-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spread-chart-legend .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
 .chart-price-row {
   display: flex;
   align-items: baseline;

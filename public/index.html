@@ -230,6 +230,23 @@
     </div>
   </div>
 
+  <div id="spreadChartOverlay" class="chart-overlay" hidden>
+    <div class="chart-modal">
+      <div class="chart-modal-header">
+        <h2 id="spreadChartTitle">—</h2>
+        <button id="spreadChartClose" class="chart-close" aria-label="Закрыть">×</button>
+      </div>
+      <p id="spreadChartSubtitle" class="chart-subtitle"></p>
+
+      <div id="spreadChartLegend" class="spread-chart-legend"></div>
+
+      <div id="spreadChartBody" class="chart-body">
+        <canvas id="spreadChartCanvas" width="760" height="320"></canvas>
+      </div>
+      <p id="spreadChartMessage" class="chart-message" hidden></p>
+    </div>
+  </div>
+
   <footer>
     <p>Данные — публичные market-data API бирж. Инструмент только для мониторинга: приложение не хранит ключи и не открывает позиции.
     Перед входом в стратегию всегда проверяйте вручную ликвидность, наличие спот-пары и реальную комиссию входа/выхода.</p>
