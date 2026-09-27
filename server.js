@@ -4,6 +4,7 @@ const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
 const exchanges = require('./lib/exchanges');
 const auth = require('./lib/auth');
+const favorites = require('./lib/favorites');
 const aprHistory = require('./lib/aprHistory');
 const { PRICE_BAND } = require('./lib/cryptoassets');
 
@@ -65,6 +66,24 @@ app.get('/api/session', (req, res) => {
 app.get('/api/guest-logins', auth.requireOwner, (req, res) => {
   const entries = auth.readGuestLog();
   res.json({ count: entries.length, entries });
+});
+
+// Favorited coins (by base asset) are shared server-side, not per-browser —
+// lib/cache.js uses this list to force those coins into every exchange's
+// history-fetch candidates regardless of current-rate ranking, so "add to
+// favorites" also means "always keep monitoring this coin".
+app.get('/api/favorites', (req, res) => {
+  res.json({ favorites: favorites.list() });
+});
+
+app.post('/api/favorites/:baseAsset', (req, res) => {
+  favorites.add(req.params.baseAsset);
+  res.json({ favorites: favorites.list() });
+});
+
+app.delete('/api/favorites/:baseAsset', (req, res) => {
+  favorites.remove(req.params.baseAsset);
+  res.json({ favorites: favorites.list() });
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
