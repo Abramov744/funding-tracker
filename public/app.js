@@ -1,23 +1,35 @@
-const FAVORITES_KEY = 'funding-tracker-favorites';
-
 // Favorites are keyed by base asset (e.g. "BTC"), not by exchange+symbol — the same
 // coin usually shows up as several rows (one per exchange), and starring it once
 // should mark all of them, so the favorites view can compare where funding is best
-// right now for a coin you're already tracking.
-function loadFavorites() {
+// right now for a coin you're already tracking. Stored server-side (see
+// /api/favorites) rather than in localStorage: the backend uses this same list
+// to force-monitor the coin on every refresh regardless of its current rate,
+// so it has to be shared with the server, not just remembered in this browser.
+async function loadFavorites() {
   try {
-    const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY));
-    return new Set(Array.isArray(raw) ? raw : []);
+    const res = await fetch('/api/favorites');
+    if (!res.ok) return new Set();
+    const data = await res.json();
+    return new Set(Array.isArray(data.favorites) ? data.favorites : []);
   } catch {
     return new Set();
   }
 }
 
-function saveFavorites(favorites) {
+async function addFavorite(baseAsset) {
   try {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+    await fetch(`/api/favorites/${encodeURIComponent(baseAsset)}`, { method: 'POST' });
   } catch {
-    // Private-browsing/storage-blocked — favorites just won't persist across reloads.
+    // Best-effort — the star still reflects the intended state locally, and
+    // the next successful sync will reconcile it.
+  }
+}
+
+async function removeFavorite(baseAsset) {
+  try {
+    await fetch(`/api/favorites/${encodeURIComponent(baseAsset)}`, { method: 'DELETE' });
+  } catch {
+    // Same as addFavorite — best-effort.
   }
 }
 
@@ -30,7 +42,7 @@ const state = {
   sortDir: 'desc',
   spreadSortKey: 'avgAprPct',
   spreadSortDir: 'desc',
-  favorites: loadFavorites(),
+  favorites: new Set(),
   showFavoritesOnly: false,
   activeTab: 'funding',
 };
@@ -179,13 +191,19 @@ function getFilteredRows() {
   return state.rows.filter((row) => {
     if (!activeExchanges.has(row.exchange)) return false;
     if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
+    if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
+    // A favorited coin is never cut off by the strategy/threshold filters below
+    // — it stays visible (and monitored, see lib/cache.js's forced-favorites
+    // candidate logic) until it's removed from favorites. Exchange filter,
+    // search, and "only favorites" above still apply — those are explicit
+    // navigation choices, not the strategy screening this exemption is for.
+    if (state.favorites.has(row.baseAsset)) return true;
     // Replaces the old separate "Только проверенные (есть история)" checkbox —
     // a row with no successful history fetch has 0 days, so it's excluded by
     // this alone whenever minDays > 0 (the default), same net effect with one
     // control instead of two overlapping ones.
     if (historyDays(row) < minDays) return false;
     if (onlyMatch && !rowMatchesStrategy(row)) return false;
-    if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
     return true;
   });
 }
@@ -901,10 +919,11 @@ els.tbody.addEventListener('click', (e) => {
     const symbol = starBtn.dataset.symbol;
     if (state.favorites.has(symbol)) {
       state.favorites.delete(symbol);
+      removeFavorite(symbol);
     } else {
       state.favorites.add(symbol);
+      addFavorite(symbol);
     }
-    saveFavorites(state.favorites);
     render();
     return;
   }
@@ -929,5 +948,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !els.chartOverlay.hidden) closeChart();
 });
 
+loadFavorites().then((favorites) => {
+  state.favorites = favorites;
+  render();
+});
 loadData();
 setInterval(loadData, 60 * 1000);
