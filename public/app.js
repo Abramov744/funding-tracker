@@ -1,33 +1,38 @@
-// Favorites are keyed by base asset (e.g. "BTC"), not by exchange+symbol — the same
-// coin usually shows up as several rows (one per exchange), and starring it once
-// should mark all of them, so the favorites view can compare where funding is best
-// right now for a coin you're already tracking. Stored server-side (see
-// /api/favorites) rather than in localStorage: the backend uses this same list
-// to force-monitor the coin on every refresh regardless of its current rate,
-// so it has to be shared with the server, not just remembered in this browser.
+// Favorites are keyed by base asset (e.g. "BTC"), not by exchange+symbol — the
+// same coin usually shows up as several rows (one per exchange/leg), and
+// starring it once should mark all of them on that tab. Kept as a separate
+// list per tab (funding/spread) — starring a coin for the spot+short table
+// isn't meant to also mark it on the futures-futures table. Stored
+// server-side (see /api/favorites) rather than in localStorage: the backend
+// uses these same lists to force-monitor a coin on every refresh regardless
+// of its current rate, so they have to be shared with the server, not just
+// remembered in this browser.
 async function loadFavorites() {
   try {
     const res = await fetch('/api/favorites');
-    if (!res.ok) return new Set();
+    if (!res.ok) return { funding: new Set(), spread: new Set() };
     const data = await res.json();
-    return new Set(Array.isArray(data.favorites) ? data.favorites : []);
+    return {
+      funding: new Set(Array.isArray(data.funding) ? data.funding : []),
+      spread: new Set(Array.isArray(data.spread) ? data.spread : []),
+    };
   } catch {
-    return new Set();
+    return { funding: new Set(), spread: new Set() };
   }
 }
 
-async function addFavorite(baseAsset) {
+async function addFavorite(tab, baseAsset) {
   try {
-    await fetch(`/api/favorites/${encodeURIComponent(baseAsset)}`, { method: 'POST' });
+    await fetch(`/api/favorites/${tab}/${encodeURIComponent(baseAsset)}`, { method: 'POST' });
   } catch {
     // Best-effort — the star still reflects the intended state locally, and
     // the next successful sync will reconcile it.
   }
 }
 
-async function removeFavorite(baseAsset) {
+async function removeFavorite(tab, baseAsset) {
   try {
-    await fetch(`/api/favorites/${encodeURIComponent(baseAsset)}`, { method: 'DELETE' });
+    await fetch(`/api/favorites/${tab}/${encodeURIComponent(baseAsset)}`, { method: 'DELETE' });
   } catch {
     // Same as addFavorite — best-effort.
   }
@@ -43,6 +48,7 @@ const state = {
   spreadSortKey: 'avgAprPct',
   spreadSortDir: 'desc',
   favorites: new Set(),
+  spreadFavorites: new Set(),
   showFavoritesOnly: false,
   activeTab: 'funding',
 };
@@ -286,11 +292,12 @@ function getFilteredSpreadRows() {
   return state.spreadRows.filter((row) => {
     if (!activeExchanges.has(row.shortExchange) || !activeExchanges.has(row.longExchange)) return false;
     if (search && !row.baseAsset.toUpperCase().includes(search)) return false;
-    if (state.showFavoritesOnly && !state.favorites.has(row.baseAsset)) return false;
+    if (state.showFavoritesOnly && !state.spreadFavorites.has(row.baseAsset)) return false;
     // Same exemption as the funding table: a favorited coin stays visible
     // here too, regardless of the strategy/threshold filters, until it's
-    // removed from favorites.
-    if (state.favorites.has(row.baseAsset)) return true;
+    // removed from favorites. Uses this tab's own favorites list, separate
+    // from the funding table's.
+    if (state.spreadFavorites.has(row.baseAsset)) return true;
     if (spreadHistoryDays(row) < minDays) return false;
     if (!spreadRowMatchesStrategy(row)) return false;
     return true;
@@ -321,7 +328,7 @@ function renderSpreadTable() {
   for (const row of rows) {
     const tr = document.createElement('tr');
     const aprClass = row.spreadAprPct > 0 ? 'positive' : row.spreadAprPct < 0 ? 'negative' : '';
-    const isFav = state.favorites.has(row.baseAsset);
+    const isFav = state.spreadFavorites.has(row.baseAsset);
 
     tr.innerHTML = `
       <td class="cell-coin" data-label="Монета">
@@ -346,7 +353,9 @@ function renderSpreadTable() {
 }
 
 function updateFavToggle() {
-  const count = state.favorites.size;
+  // Each tab has its own favorites list, so the count in the header reflects
+  // whichever tab is currently active rather than a combined total.
+  const count = (state.activeTab === 'spread' ? state.spreadFavorites : state.favorites).size;
   els.favToggle.textContent = `${state.showFavoritesOnly ? '★' : '☆'} Избранное${count ? ` (${count})` : ''}`;
   els.favToggle.classList.toggle('active', state.showFavoritesOnly);
   els.favToggle.setAttribute('aria-pressed', String(state.showFavoritesOnly));
@@ -601,6 +610,7 @@ function setActiveTab(tab) {
   els.spreadTabPanel.hidden = tab !== 'spread';
   els.filtersDropdown.hidden = tab !== 'funding';
   els.spreadFiltersDropdown.hidden = tab !== 'spread';
+  updateFavToggle();
   closeAllDropdowns();
 }
 
@@ -1089,10 +1099,10 @@ els.tbody.addEventListener('click', (e) => {
     const symbol = starBtn.dataset.symbol;
     if (state.favorites.has(symbol)) {
       state.favorites.delete(symbol);
-      removeFavorite(symbol);
+      removeFavorite('funding', symbol);
     } else {
       state.favorites.add(symbol);
-      addFavorite(symbol);
+      addFavorite('funding', symbol);
     }
     render();
     return;
@@ -1114,12 +1124,12 @@ els.spreadTbody.addEventListener('click', (e) => {
   const starBtn = e.target.closest('.fav-star');
   if (starBtn) {
     const symbol = starBtn.dataset.symbol;
-    if (state.favorites.has(symbol)) {
-      state.favorites.delete(symbol);
-      removeFavorite(symbol);
+    if (state.spreadFavorites.has(symbol)) {
+      state.spreadFavorites.delete(symbol);
+      removeFavorite('spread', symbol);
     } else {
-      state.favorites.add(symbol);
-      addFavorite(symbol);
+      state.spreadFavorites.add(symbol);
+      addFavorite('spread', symbol);
     }
     render();
     return;
@@ -1155,7 +1165,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 loadFavorites().then((favorites) => {
-  state.favorites = favorites;
+  state.favorites = favorites.funding;
+  state.spreadFavorites = favorites.spread;
   render();
 });
 loadData();

@@ -69,21 +69,27 @@ app.get('/api/guest-logins', auth.requireOwner, (req, res) => {
 });
 
 // Favorited coins (by base asset) are shared server-side, not per-browser —
-// lib/cache.js uses this list to force those coins into every exchange's
+// lib/cache.js uses these lists to force those coins into every exchange's
 // history-fetch candidates regardless of current-rate ranking, so "add to
-// favorites" also means "always keep monitoring this coin".
+// favorites" also means "always keep monitoring this coin". Kept as one list
+// per tab (funding/spread) since starring a coin on one table isn't meant to
+// affect the other.
+function favoritesPayload() {
+  return { funding: favorites.list('funding'), spread: favorites.list('spread') };
+}
+
 app.get('/api/favorites', (req, res) => {
-  res.json({ favorites: favorites.list() });
+  res.json(favoritesPayload());
 });
 
-app.post('/api/favorites/:baseAsset', (req, res) => {
-  favorites.add(req.params.baseAsset);
-  res.json({ favorites: favorites.list() });
+app.post('/api/favorites/:tab/:baseAsset', (req, res) => {
+  favorites.add(req.params.tab, req.params.baseAsset);
+  res.json(favoritesPayload());
 });
 
-app.delete('/api/favorites/:baseAsset', (req, res) => {
-  favorites.remove(req.params.baseAsset);
-  res.json({ favorites: favorites.list() });
+app.delete('/api/favorites/:tab/:baseAsset', (req, res) => {
+  favorites.remove(req.params.tab, req.params.baseAsset);
+  res.json(favoritesPayload());
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
