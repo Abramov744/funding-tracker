@@ -521,6 +521,23 @@ footer {
   margin-bottom: 16px;
 }
 
+.spread-price-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: #0c0e12;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.spread-price-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .chart-price-label {
   color: var(--muted);
   font-size: 12px;
