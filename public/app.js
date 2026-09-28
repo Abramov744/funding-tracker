@@ -57,6 +57,7 @@ const state = {
   // just re-slices data already fetched, no extra request.
   chartHistory: [],
   chartIntervalHours: null,
+  aprTrendPoints: [],
   aprWindowDays: 30,
 };
 
@@ -763,22 +764,31 @@ async function loadFundingChart(row) {
       els.chartMessage.textContent = 'Нет данных по истории фандинга за последние 30 дней.';
       state.chartHistory = [];
       state.chartIntervalHours = null;
-      updateAprWindowStats();
+      applyAprWindow();
       return;
     }
 
     state.chartHistory = data.history;
     state.chartIntervalHours = data.intervalHours || row.intervalHours || null;
-    updateAprWindowStats();
-    drawFundingChart(data.history);
+    applyAprWindow();
   } catch (err) {
     els.chartBody.hidden = true;
     els.chartMessage.hidden = false;
     els.chartMessage.textContent = 'Не удалось загрузить историю: ' + (err.message || err);
     state.chartHistory = [];
     state.chartIntervalHours = null;
-    updateAprWindowStats();
+    applyAprWindow();
   }
+}
+
+// Everything driven by the popup's 1Д/7Д/15Д/30Д selector: the "Средний
+// APR"/"% выигрышных" stat, the funding-rate bar chart, and the APR-trend
+// chart all re-slice their already-fetched data to state.aprWindowDays
+// instead of re-fetching — switching windows is instant.
+function applyAprWindow() {
+  updateAprWindowStats();
+  renderWindowedFundingChart();
+  renderWindowedAprTrendChart();
 }
 
 // Recomputes "Средний APR" / "% выигрышных" over the currently selected
@@ -786,8 +796,7 @@ async function loadFundingChart(row) {
 // same math as lib/metrics.js's historyStats/annualizedPct, just run
 // client-side on a time-sliced subset so switching windows needs no request.
 function updateAprWindowStats() {
-  const cutoff = Date.now() - state.aprWindowDays * 24 * 60 * 60 * 1000;
-  const windowed = state.chartHistory.filter((h) => h.time >= cutoff);
+  const windowed = filterByAprWindow(state.chartHistory);
 
   if (windowed.length === 0 || !state.chartIntervalHours) {
     els.chartWindowApr.textContent = '—';
@@ -804,6 +813,44 @@ function updateAprWindowStats() {
   els.chartWindowApr.className =
     'chart-price-value' + (avgAprPct > 0 ? ' positive' : avgAprPct < 0 ? ' negative' : '');
   els.chartWindowPositiveRatio.textContent = fmtRatio(positiveRatio);
+}
+
+// Redraws the raw-settlements bar chart limited to state.aprWindowDays.
+function renderWindowedFundingChart() {
+  const windowed = filterByAprWindow(state.chartHistory);
+  if (windowed.length === 0) {
+    els.chartBody.hidden = true;
+    els.chartMessage.hidden = false;
+    els.chartMessage.textContent = 'Нет данных за выбранный период.';
+    return;
+  }
+  els.chartBody.hidden = false;
+  els.chartMessage.hidden = true;
+  drawFundingChart(windowed);
+}
+
+// Redraws the "Тренд среднего APR" line chart limited to state.aprWindowDays
+// — zooms into the recent portion of the same (always 30-day-average-valued)
+// hourly snapshots, rather than recomputing the trend's own values.
+function renderWindowedAprTrendChart() {
+  const windowed = filterByAprWindow(state.aprTrendPoints);
+  if (windowed.length < 2) {
+    els.aprTrendBody.hidden = true;
+    els.aprTrendMessage.hidden = false;
+    els.aprTrendMessage.textContent =
+      state.aprTrendPoints.length >= 2
+        ? 'Недостаточно точек тренда за выбранный период.'
+        : 'Пока недостаточно данных для тренда — снимки собираются раз в час, загляните позже.';
+    return;
+  }
+  els.aprTrendBody.hidden = false;
+  els.aprTrendMessage.hidden = true;
+  drawAprTrendChart(windowed);
+}
+
+function filterByAprWindow(points) {
+  const cutoff = Date.now() - state.aprWindowDays * 24 * 60 * 60 * 1000;
+  return points.filter((p) => p.time >= cutoff);
 }
 
 // Same formula as lib/metrics.js's annualizedPct — duplicated client-side
@@ -933,18 +980,21 @@ async function loadAprTrend(row) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-    if (!data.points || data.points.length < 2) {
+    state.aprTrendPoints = data.points || [];
+
+    if (state.aprTrendPoints.length < 2) {
       els.aprTrendBody.hidden = true;
       els.aprTrendMessage.hidden = false;
       els.aprTrendMessage.textContent = 'Пока недостаточно данных для тренда — снимки собираются раз в час, загляните позже.';
       return;
     }
 
-    drawAprTrendChart(data.points);
+    renderWindowedAprTrendChart();
   } catch (err) {
     els.aprTrendBody.hidden = true;
     els.aprTrendMessage.hidden = false;
     els.aprTrendMessage.textContent = 'Не удалось загрузить тренд: ' + (err.message || err);
+    state.aprTrendPoints = [];
   }
 }
 
@@ -1240,7 +1290,7 @@ document.querySelectorAll('.apr-window-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     state.aprWindowDays = Number(btn.dataset.window);
     document.querySelectorAll('.apr-window-btn').forEach((b) => b.classList.toggle('active', b === btn));
-    updateAprWindowStats();
+    applyAprWindow();
   });
 });
 
