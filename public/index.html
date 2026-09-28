@@ -240,6 +240,21 @@
 
       <div id="spreadChartLegend" class="spread-chart-legend"></div>
 
+      <div class="spread-price-row">
+        <div class="spread-price-item">
+          <span class="chart-price-label">Цена шорт</span>
+          <span id="spreadChartShortPrice" class="chart-price-value">—</span>
+        </div>
+        <div class="spread-price-item">
+          <span class="chart-price-label">Цена лонг</span>
+          <span id="spreadChartLongPrice" class="chart-price-value">—</span>
+        </div>
+        <div class="spread-price-item">
+          <span class="chart-price-label">Ценовой спред <span class="muted">(шорт − лонг)</span></span>
+          <span id="spreadChartPriceSpread" class="chart-price-value">—</span>
+        </div>
+      </div>
+
       <div id="spreadChartBody" class="chart-body">
         <canvas id="spreadChartCanvas" width="760" height="320"></canvas>
       </div>

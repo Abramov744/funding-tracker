@@ -121,6 +121,9 @@ const els = {
   spreadChartTitle: document.getElementById('spreadChartTitle'),
   spreadChartSubtitle: document.getElementById('spreadChartSubtitle'),
   spreadChartLegend: document.getElementById('spreadChartLegend'),
+  spreadChartShortPrice: document.getElementById('spreadChartShortPrice'),
+  spreadChartLongPrice: document.getElementById('spreadChartLongPrice'),
+  spreadChartPriceSpread: document.getElementById('spreadChartPriceSpread'),
   spreadChartBody: document.getElementById('spreadChartBody'),
   spreadChartCanvas: document.getElementById('spreadChartCanvas'),
   spreadChartMessage: document.getElementById('spreadChartMessage'),
@@ -166,6 +169,15 @@ function fmtPrice(v) {
   else if (abs >= 0.01) digits = 6;
   else digits = 8;
   return '$' + v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+// Same precision as fmtPrice, but with an explicit +/- sign in front of the
+// $ — used for a spread/difference where the sign itself is the point
+// (favorable vs. unfavorable), not just magnitude.
+function fmtSignedPrice(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+  return sign + fmtPrice(Math.abs(v));
 }
 
 // Compact notation for large USD figures ($850.4M / $18.3M / $46K) — OI values
@@ -333,7 +345,7 @@ function renderSpreadTable() {
     tr.innerHTML = `
       <td class="cell-coin" data-label="Монета">
         <button type="button" class="fav-star${isFav ? ' active' : ''}" data-symbol="${row.baseAsset}" aria-pressed="${isFav}" aria-label="${isFav ? 'Убрать из избранного' : 'В избранное'}">${isFav ? '★' : '☆'}</button>
-        <button type="button" class="coin-link" data-base="${row.baseAsset}" data-short-exchange="${row.shortExchange}" data-short-label="${row.shortExchangeLabel}" data-short-symbol="${row.shortSymbol}" data-short-interval="${row.shortIntervalHours ?? ''}" data-long-exchange="${row.longExchange}" data-long-label="${row.longExchangeLabel}" data-long-symbol="${row.longSymbol}" data-long-interval="${row.longIntervalHours ?? ''}">${row.baseAsset}</button>
+        <button type="button" class="coin-link" data-base="${row.baseAsset}" data-short-exchange="${row.shortExchange}" data-short-label="${row.shortExchangeLabel}" data-short-symbol="${row.shortSymbol}" data-short-interval="${row.shortIntervalHours ?? ''}" data-short-price="${row.shortPrice ?? ''}" data-long-exchange="${row.longExchange}" data-long-label="${row.longExchangeLabel}" data-long-symbol="${row.longSymbol}" data-long-interval="${row.longIntervalHours ?? ''}" data-long-price="${row.longPrice ?? ''}">${row.baseAsset}</button>
       </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="cell-exchange" data-label="Шорт (биржа)">${row.shortExchangeLabel}</td>
@@ -1090,6 +1102,20 @@ function openSpreadChart(data) {
     <span><span class="dot" style="background:${SPREAD_CHART_COLORS.short}"></span>${data.shortLabel} — шорт</span>
     <span><span class="dot" style="background:${SPREAD_CHART_COLORS.long}"></span>${data.longLabel} — лонг</span>
   `;
+
+  els.spreadChartShortPrice.textContent = fmtPrice(data.shortPrice);
+  els.spreadChartLongPrice.textContent = fmtPrice(data.longPrice);
+
+  // "In your favor" for this short+long pair means the short leg (sold, cash
+  // in) fetched more than the long leg (bought, cash out) cost right now —
+  // shortPrice - longPrice > 0. The opposite sign means the entry basis is
+  // currently working against you.
+  const hasBothPrices = data.shortPrice !== null && data.longPrice !== null;
+  const priceSpread = hasBothPrices ? data.shortPrice - data.longPrice : null;
+  els.spreadChartPriceSpread.textContent = fmtSignedPrice(priceSpread);
+  els.spreadChartPriceSpread.classList.toggle('positive', priceSpread !== null && priceSpread > 0);
+  els.spreadChartPriceSpread.classList.toggle('negative', priceSpread !== null && priceSpread < 0);
+
   loadSpreadPairChart(data);
 }
 
@@ -1144,10 +1170,12 @@ els.spreadTbody.addEventListener('click', (e) => {
     shortSymbol: d.shortSymbol,
     shortIntervalHours: d.shortInterval,
     shortLabel: d.shortLabel,
+    shortPrice: d.shortPrice === '' ? null : Number(d.shortPrice),
     longExchange: d.longExchange,
     longSymbol: d.longSymbol,
     longIntervalHours: d.longInterval,
     longLabel: d.longLabel,
+    longPrice: d.longPrice === '' ? null : Number(d.longPrice),
   });
 });
 
