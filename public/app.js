@@ -51,6 +51,13 @@ const state = {
   spreadFavorites: new Set(),
   showFavoritesOnly: false,
   activeTab: 'funding',
+
+  // Popup's raw settlement history + the window (in days) currently selected
+  // for the "Средний APR" stat — kept client-side so switching 1Д/7Д/15Д/30Д
+  // just re-slices data already fetched, no extra request.
+  chartHistory: [],
+  chartIntervalHours: null,
+  aprWindowDays: 30,
 };
 
 const els = {
@@ -73,6 +80,8 @@ const els = {
   chartTitle: document.getElementById('chartTitle'),
   chartSubtitle: document.getElementById('chartSubtitle'),
   chartFuturesPrice: document.getElementById('chartFuturesPrice'),
+  chartWindowApr: document.getElementById('chartWindowApr'),
+  chartWindowPositiveRatio: document.getElementById('chartWindowPositiveRatio'),
   chartBody: document.getElementById('chartBody'),
   chartCanvas: document.getElementById('chartCanvas'),
   chartMessage: document.getElementById('chartMessage'),
@@ -752,15 +761,56 @@ async function loadFundingChart(row) {
       els.chartBody.hidden = true;
       els.chartMessage.hidden = false;
       els.chartMessage.textContent = 'Нет данных по истории фандинга за последние 30 дней.';
+      state.chartHistory = [];
+      state.chartIntervalHours = null;
+      updateAprWindowStats();
       return;
     }
 
+    state.chartHistory = data.history;
+    state.chartIntervalHours = data.intervalHours || row.intervalHours || null;
+    updateAprWindowStats();
     drawFundingChart(data.history);
   } catch (err) {
     els.chartBody.hidden = true;
     els.chartMessage.hidden = false;
     els.chartMessage.textContent = 'Не удалось загрузить историю: ' + (err.message || err);
+    state.chartHistory = [];
+    state.chartIntervalHours = null;
+    updateAprWindowStats();
   }
+}
+
+// Recomputes "Средний APR" / "% выигрышных" over the currently selected
+// window (state.aprWindowDays) from the already-fetched settlement history —
+// same math as lib/metrics.js's historyStats/annualizedPct, just run
+// client-side on a time-sliced subset so switching windows needs no request.
+function updateAprWindowStats() {
+  const cutoff = Date.now() - state.aprWindowDays * 24 * 60 * 60 * 1000;
+  const windowed = state.chartHistory.filter((h) => h.time >= cutoff);
+
+  if (windowed.length === 0 || !state.chartIntervalHours) {
+    els.chartWindowApr.textContent = '—';
+    els.chartWindowApr.className = 'chart-price-value';
+    els.chartWindowPositiveRatio.textContent = '—';
+    return;
+  }
+
+  const avgRate = windowed.reduce((sum, h) => sum + h.rate, 0) / windowed.length;
+  const positiveRatio = windowed.filter((h) => h.rate > 0).length / windowed.length;
+  const avgAprPct = annualizedPctClient(avgRate, state.chartIntervalHours);
+
+  els.chartWindowApr.textContent = fmtAprPct(avgAprPct);
+  els.chartWindowApr.className =
+    'chart-price-value' + (avgAprPct > 0 ? ' positive' : avgAprPct < 0 ? ' negative' : '');
+  els.chartWindowPositiveRatio.textContent = fmtRatio(positiveRatio);
+}
+
+// Same formula as lib/metrics.js's annualizedPct — duplicated client-side
+// since this recomputation happens in the browser, not the server.
+function annualizedPctClient(rate, intervalHours) {
+  if (!intervalHours || !Number.isFinite(rate)) return null;
+  return rate * (8760 / intervalHours) * 100;
 }
 
 // --- Average-APR trend chart (how the "Ср. APR %" number itself has moved) --
@@ -944,6 +994,13 @@ function openCoinChart(row) {
   els.chartTitle.textContent = `${row.baseAsset} — фандинг за 30 дней`;
   els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
   els.chartFuturesPrice.textContent = fmtPrice(row.price);
+
+  // Reset the APR-window selector back to its default (30Д) each time a
+  // (possibly different) coin's popup is opened.
+  state.aprWindowDays = 30;
+  document.querySelectorAll('.apr-window-btn').forEach((btn) => {
+    btn.classList.toggle('active', Number(btn.dataset.window) === 30);
+  });
 
   // Independent lookups — kick all three off at once instead of chaining them.
   loadFundingChart(row);
@@ -1176,6 +1233,14 @@ els.spreadTbody.addEventListener('click', (e) => {
     longIntervalHours: d.longInterval,
     longLabel: d.longLabel,
     longPrice: d.longPrice === '' ? null : Number(d.longPrice),
+  });
+});
+
+document.querySelectorAll('.apr-window-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.aprWindowDays = Number(btn.dataset.window);
+    document.querySelectorAll('.apr-window-btn').forEach((b) => b.classList.toggle('active', b === btn));
+    updateAprWindowStats();
   });
 });
 

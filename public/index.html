@@ -209,6 +209,21 @@
         <span id="chartFuturesPrice" class="chart-price-value">—</span>
       </div>
 
+      <div class="apr-window-row">
+        <div class="apr-window-buttons" role="group" aria-label="Окно усреднения APR">
+          <button type="button" class="apr-window-btn" data-window="1">1Д</button>
+          <button type="button" class="apr-window-btn" data-window="7">7Д</button>
+          <button type="button" class="apr-window-btn" data-window="15">15Д</button>
+          <button type="button" class="apr-window-btn active" data-window="30">30Д</button>
+        </div>
+        <div class="apr-window-stats">
+          <span class="chart-price-label">Средний APR</span>
+          <span id="chartWindowApr" class="chart-price-value">—</span>
+          <span class="chart-price-label">% выигрышных</span>
+          <span id="chartWindowPositiveRatio" class="chart-price-value">—</span>
+        </div>
+      </div>
+
       <div id="chartBody" class="chart-body">
         <canvas id="chartCanvas" width="760" height="320"></canvas>
       </div>
