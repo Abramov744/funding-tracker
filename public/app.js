@@ -158,6 +158,12 @@ function fmtRatio(v) {
   return (v * 100).toFixed(0) + '%';
 }
 
+// Standard sign-based coloring for rate/APR cells — positive green, negative
+// red, matching the funding tab's own fundingRate column.
+function signClass(v) {
+  return v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+}
+
 // Periods alone don't tell you the lookback window since the funding interval
 // differs by exchange/coin (1h/4h/8h) — this converts to actual calendar days.
 function historyDays(row) {
@@ -358,7 +364,6 @@ function renderSpreadTable() {
 
   for (const row of rows) {
     const tr = document.createElement('tr');
-    const aprClass = row.spreadAprPct > 0 ? 'positive' : row.spreadAprPct < 0 ? 'negative' : '';
     const isFav = state.spreadFavorites.has(row.baseAsset);
 
     tr.innerHTML = `
@@ -368,16 +373,16 @@ function renderSpreadTable() {
       </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
       <td class="cell-exchange" data-label="Шорт (биржа)">${row.shortExchangeLabel}</td>
-      <td class="positive" data-label="Ставка шорт">${fmtPct(row.shortRate)}</td>
+      <td class="${signClass(row.shortRate)}" data-label="Ставка шорт">${fmtPct(row.shortRate)}</td>
       <td data-label="OI шорт">${fmtCompactUsd(row.shortOpenInterestUsd)}</td>
       <td class="cell-exchange" data-label="Лонг (биржа)">${row.longExchangeLabel}</td>
-      <td class="${row.longRate < 0 ? 'positive' : ''}" data-label="Ставка лонг">${fmtPct(row.longRate)}</td>
+      <td class="${signClass(row.longRate)}" data-label="Ставка лонг">${fmtPct(row.longRate)}</td>
       <td data-label="OI лонг">${fmtCompactUsd(row.longOpenInterestUsd)}</td>
-      <td class="${aprClass}" data-label="Спред APR">${fmtAprPct(row.spreadAprPct)}</td>
+      <td class="${signClass(row.spreadAprPct)}" data-label="Спред APR">${fmtAprPct(row.spreadAprPct)}</td>
       <td data-label="Периодов">${fmtSpreadPeriods(row)}</td>
       <td data-label="% выигрышных">${fmtRatio(row.positiveRatio)}</td>
-      <td class="${row.minAprPct < 0 ? 'negative' : ''}" data-label="Мин. спред APR">${fmtAprPct(row.minAprPct)}</td>
-      <td data-label="Ср. спред APR">${fmtAprPct(row.avgAprPct)}</td>
+      <td class="${signClass(row.minAprPct)}" data-label="Мин. спред APR">${fmtAprPct(row.minAprPct)}</td>
+      <td class="${signClass(row.avgAprPct)}" data-label="Ср. спред APR">${fmtAprPct(row.avgAprPct)}</td>
     `;
     els.spreadTbody.appendChild(tr);
   }
@@ -409,8 +414,8 @@ function renderFundingTable() {
     const tr = document.createElement('tr');
     if (rowMatchesStrategy(row)) tr.classList.add('match');
 
-    const rateClass = row.fundingRate > 0 ? 'positive' : row.fundingRate < 0 ? 'negative' : '';
-    const aprClass = row.aprPct > 0 ? 'positive' : row.aprPct < 0 ? 'negative' : '';
+    const rateClass = signClass(row.fundingRate);
+    const aprClass = signClass(row.aprPct);
     const isFav = state.favorites.has(row.baseAsset);
 
     tr.innerHTML = `
