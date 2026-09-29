@@ -17,7 +17,9 @@ const SPOT_PRICE_CACHE_MS = 60 * 1000; // spare CoinGecko's rate limit on repeat
 const spotPriceCache = new Map(); // baseAsset (uppercase) -> { expiresAt, data }
 
 async function getJson(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'funding-tracker/1.0' } });
+  const headers = { 'User-Agent': 'funding-tracker/1.0' };
+  if (process.env.COINGECKO_API_KEY) headers['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`CoinGecko ${url} -> HTTP ${res.status}`);
   return res.json();
 }
