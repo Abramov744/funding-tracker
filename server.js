@@ -101,6 +101,11 @@ app.get('/api/funding', (req, res) => {
     refreshing: state.refreshing,
     errors: state.errors,
     rows: state.rows,
+    // Lets the client tell "this coin genuinely isn't in CoinGecko's top
+    // 1500" from "CoinGecko itself is unreachable right now" — every row's
+    // marketCapRank reads null in both cases, but only the first should
+    // count against it in the "макс. ранг" filter.
+    marketCapRankAvailable: marketcap.isUsable(),
   });
 });
 
@@ -115,6 +120,7 @@ app.get('/api/spreads', (req, res) => {
     refreshing: state.refreshing,
     errors: state.errors,
     rows: state.spreadRows,
+    marketCapRankAvailable: marketcap.isUsable(),
   });
 });
 
