@@ -43,6 +43,10 @@ const state = {
   spreadRows: [],
   updatedAt: null,
   refreshing: false,
+  // Optimistic until the first response says otherwise — see rowMatchesStrategy's
+  // comment for why this matters (a downed CoinGecko map must not silently
+  // empty the table via the "макс. ранг" filter).
+  marketCapRankAvailable: true,
   sortKey: 'avgAprPct',
   sortDir: 'desc',
   spreadSortKey: 'avgAprPct',
@@ -212,7 +216,11 @@ function rowMatchesStrategy(row) {
   // function already clears the threshold.
   if (els.noNegatives.checked && (row.minRate === null || row.minRate < 0)) return false;
   const maxRank = els.maxRank.value ? Number(els.maxRank.value) : null;
-  if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
+  // Skipped entirely while CoinGecko's rank map is down (marketCapRank reads
+  // null for EVERY row then, not just ones genuinely outside the top 1500) —
+  // otherwise a third-party outage silently empties the whole table down to
+  // just the favorites-exempt rows instead of just losing the rank column.
+  if (maxRank !== null && state.marketCapRankAvailable && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
   const minOi = els.minOi.value ? Number(els.minOi.value) * 1000 : null; // input is in thousands of $
   if (minOi !== null && (row.openInterestUsd === null || row.openInterestUsd === undefined || row.openInterestUsd < minOi)) return false;
   return true;
@@ -295,7 +303,8 @@ function spreadRowMatchesStrategy(row) {
   if (row.positiveRatio === null || row.positiveRatio < minRatio) return false;
   if (els.spreadNoNegatives.checked && (row.minAprPct === null || row.minAprPct < 0)) return false;
   const maxRank = els.spreadMaxRank.value ? Number(els.spreadMaxRank.value) : null;
-  if (maxRank !== null && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
+  // Same exemption as the funding tab's rowMatchesStrategy — see its comment.
+  if (maxRank !== null && state.marketCapRankAvailable && (row.marketCapRank === null || row.marketCapRank > maxRank)) return false;
   const minOi = els.spreadMinOi.value ? Number(els.spreadMinOi.value) * 1000 : null;
   if (minOi !== null) {
     if (row.shortOpenInterestUsd === null || row.shortOpenInterestUsd === undefined || row.shortOpenInterestUsd < minOi) return false;
@@ -445,11 +454,15 @@ async function loadData() {
   state.rows = data.rows || [];
   state.updatedAt = data.updatedAt;
   state.refreshing = Boolean(data.refreshing);
+  state.marketCapRankAvailable = data.marketCapRankAvailable !== false;
 
   const errorEntries = Object.entries(data.errors || {});
-  const errorText = errorEntries.length
-    ? 'Ошибки при опросе бирж: ' + errorEntries.map(([ex, msg]) => `${ex} — ${msg}`).join(' · ')
-    : '';
+  const rankWarning = state.marketCapRankAvailable
+    ? ''
+    : '⚠ Ранг по капитализации (CoinGecko) сейчас недоступен — фильтр «макс. ранг» временно отключён, монеты не отфильтровываются по нему.';
+  const errorText = [rankWarning, errorEntries.length ? 'Ошибки при опросе бирж: ' + errorEntries.map(([ex, msg]) => `${ex} — ${msg}`).join(' · ') : '']
+    .filter(Boolean)
+    .join(' · ');
   els.errorBanner.hidden = !errorText;
   els.errorBanner.textContent = errorText;
   // Same underlying per-exchange errors as /api/funding (both are views over
