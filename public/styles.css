@@ -558,6 +558,33 @@ footer {
   color: #06120c;
 }
 
+.filter-preset-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.filter-preset-btn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.filter-preset-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.filter-preset-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06120c;
+}
+
 .apr-window-stats {
   display: flex;
   align-items: baseline;

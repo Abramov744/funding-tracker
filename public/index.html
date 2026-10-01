@@ -37,6 +37,11 @@
             <span class="pill-arrow">▾</span>
           </button>
           <div class="dropdown-panel filters-panel" id="filtersDropdownPanel" hidden>
+            <div class="filter-preset-row">
+              <button type="button" class="filter-preset-btn" data-preset="light">Light</button>
+              <button type="button" class="filter-preset-btn active" data-preset="medium">Medium</button>
+              <button type="button" class="filter-preset-btn" data-preset="hard">Hard</button>
+            </div>
             <label>Мин. средний APR % <input type="number" id="minAvgApr" value="50" step="1" /></label>
             <label>Мин. % положительных <input type="number" id="minPositiveRatio" value="70" step="1" /></label>
             <label>Мин. дней истории <input type="number" id="minDays" value="15" step="1" /></label>
