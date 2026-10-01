@@ -79,6 +79,7 @@ const els = {
   minOi: document.getElementById('minOi'),
   noNegatives: document.getElementById('noNegatives'),
   onlyMatch: document.getElementById('onlyMatch'),
+  filterPresetBtns: document.querySelectorAll('.filter-preset-btn'),
   refreshBtn: document.getElementById('refreshBtn'),
   chartOverlay: document.getElementById('chartOverlay'),
   chartClose: document.getElementById('chartClose'),
@@ -549,6 +550,30 @@ document.querySelectorAll('#spreadTable th[data-key]').forEach((th) => {
   els.spreadMinOi,
   els.spreadNoNegatives,
 ].forEach((el) => el.addEventListener('input', render));
+
+// Filter presets for the funding ("Спот + шорт") tab — "medium" matches the
+// inputs' own HTML defaults, so it's also what a fresh page load starts on.
+const FILTER_PRESETS = {
+  light: { minAvgApr: 50, minPositiveRatio: 50, minDays: 7, maxRank: 1000, minOi: '', noNegatives: false, onlyMatch: true },
+  medium: { minAvgApr: 50, minPositiveRatio: 70, minDays: 15, maxRank: 500, minOi: '', noNegatives: false, onlyMatch: true },
+  hard: { minAvgApr: 50, minPositiveRatio: 90, minDays: 30, maxRank: 300, minOi: 300, noNegatives: false, onlyMatch: true },
+};
+
+els.filterPresetBtns.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const preset = FILTER_PRESETS[btn.dataset.preset];
+    if (!preset) return;
+    els.minAvgApr.value = preset.minAvgApr;
+    els.minPositiveRatio.value = preset.minPositiveRatio;
+    els.minDays.value = preset.minDays;
+    els.maxRank.value = preset.maxRank;
+    els.minOi.value = preset.minOi;
+    els.noNegatives.checked = preset.noNegatives;
+    els.onlyMatch.checked = preset.onlyMatch;
+    els.filterPresetBtns.forEach((b) => b.classList.toggle('active', b === btn));
+    render();
+  });
+});
 
 const allExFilters = Array.from(document.querySelectorAll('.ex-filter'));
 
