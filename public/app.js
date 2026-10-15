@@ -700,7 +700,7 @@ els.refreshBtn.addEventListener('click', async () => {
 
 // --- Funding history chart popup (click on a coin name) ---------------------
 
-function drawFundingChart(history) {
+function drawFundingChart(history, bounds) {
   const canvas = els.chartCanvas;
   const ctx = canvas.getContext('2d');
   const cssWidth = canvas.clientWidth || canvas.width;
@@ -752,36 +752,32 @@ function drawFundingChart(history) {
   ctx.lineTo(W - padR, zeroY);
   ctx.stroke();
 
-  if (history.length === 0) return;
+  if (history.length === 0) {
+    drawWindowAxisLabels(ctx, bounds, padL, padR, W, H, padB);
+    return;
+  }
 
-  // bars, one per settlement
+  // bars, positioned by actual settlement time within the shared window
+  // (not index/count) — a gap in real history shows as a gap on the chart
+  // instead of bars silently compressing together to fill the width.
   const n = history.length;
-  const slot = plotW / n;
-  const barW = Math.max(1, Math.min(14, slot * 0.7));
+  const xFor = (t) => padL + plotW * ((t - bounds.start) / (bounds.end - bounds.start));
+  let barW = 6;
+  if (n > 1) {
+    const avgGapMs = (history[n - 1].time - history[0].time) / (n - 1);
+    barW = Math.max(1, Math.min(14, plotW * (avgGapMs / (bounds.end - bounds.start)) * 0.7));
+  }
 
-  history.forEach((h, i) => {
+  history.forEach((h) => {
     const r = h.rate * 100;
-    const x = padL + slot * i + slot / 2 - barW / 2;
+    const x = xFor(h.time) - barW / 2;
     const y = yFor(Math.max(0, r));
     const yEnd = yFor(Math.min(0, r));
     ctx.fillStyle = r >= 0 ? '#3ddc97' : '#ff6b6b';
     ctx.fillRect(x, y, barW, Math.max(1, yEnd - y));
   });
 
-  // x-axis date labels (first, middle, last)
-  ctx.fillStyle = '#8a90a0';
-  ctx.textBaseline = 'top';
-  const labelIdx = [0, Math.floor((n - 1) / 2), n - 1];
-  const seen = new Set();
-  labelIdx.forEach((i) => {
-    if (seen.has(i)) return;
-    seen.add(i);
-    const x = padL + slot * i + slot / 2;
-    const d = new Date(history[i].time);
-    const label = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-    ctx.textAlign = i === 0 ? 'left' : i === n - 1 ? 'right' : 'center';
-    ctx.fillText(label, x, H - padB + 6);
-  });
+  drawWindowAxisLabels(ctx, bounds, padL, padR, W, H, padB);
 }
 
 function closeChart() {
@@ -869,7 +865,7 @@ function renderWindowedFundingChart() {
   }
   els.chartBody.hidden = false;
   els.chartMessage.hidden = true;
-  drawFundingChart(windowed);
+  drawFundingChart(windowed, getWindowBounds());
 }
 
 // Redraws the "Тренд среднего APR" line chart limited to state.aprWindowDays
@@ -888,12 +884,45 @@ function renderWindowedAprTrendChart() {
   }
   els.aprTrendBody.hidden = false;
   els.aprTrendMessage.hidden = true;
-  drawAprTrendChart(windowed);
+  drawAprTrendChart(windowed, getWindowBounds());
+}
+
+// Shared [start, end] millisecond bounds for the currently-selected
+// 1Д/7Д/15Д/30Д window — the single source of truth both charts position
+// their x-axis against, so "identical periods" means literally the same
+// calendar range on both, not just "zoomed to however much data each
+// happens to have".
+function getWindowBounds() {
+  const end = Date.now();
+  const start = end - state.aprWindowDays * 24 * 60 * 60 * 1000;
+  return { start, end };
 }
 
 function filterByAprWindow(points) {
-  const cutoff = Date.now() - state.aprWindowDays * 24 * 60 * 60 * 1000;
+  const cutoff = getWindowBounds().start;
   return points.filter((p) => p.time >= cutoff);
+}
+
+// Draws the three window-boundary date labels (start/middle/end) shared by
+// both charts — pinned to the selected window's calendar bounds rather than
+// to whichever data points happen to exist, so switching 1Д/7Д/15Д/30Д
+// always shows the same three dates at the same x position on both charts,
+// even when one has sparser history than the other.
+function drawWindowAxisLabels(ctx, bounds, padL, padR, W, H, padB) {
+  ctx.fillStyle = '#8a90a0';
+  ctx.textBaseline = 'top';
+  const mid = (bounds.start + bounds.end) / 2;
+  const plotW = W - padL - padR;
+  const xFor = (t) => padL + plotW * ((t - bounds.start) / (bounds.end - bounds.start));
+  [
+    { t: bounds.start, align: 'left' },
+    { t: mid, align: 'center' },
+    { t: bounds.end, align: 'right' },
+  ].forEach(({ t, align }) => {
+    const label = new Date(t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    ctx.textAlign = align;
+    ctx.fillText(label, xFor(t), H - padB + 6);
+  });
 }
 
 // Same formula as lib/metrics.js's annualizedPct — duplicated client-side
@@ -905,7 +934,7 @@ function annualizedPctClient(rate, intervalHours) {
 
 // --- Average-APR trend chart (how the "Ср. APR %" number itself has moved) --
 
-function drawAprTrendChart(points) {
+function drawAprTrendChart(points, bounds) {
   const canvas = els.aprTrendCanvas;
   const ctx = canvas.getContext('2d');
   const cssWidth = canvas.clientWidth || canvas.width;
@@ -934,7 +963,11 @@ function drawAprTrendChart(points) {
   const yMax = maxV + pad;
 
   const n = points.length;
-  const xFor = (i) => padL + (n === 1 ? plotW / 2 : (plotW * i) / (n - 1));
+  // Positioned by actual snapshot time within the shared window (same xFor
+  // shape as drawFundingChart) rather than by index, so both charts' x-axes
+  // line up on the same calendar dates regardless of how many points each
+  // happens to have.
+  const xFor = (t) => padL + plotW * ((t - bounds.start) / (bounds.end - bounds.start));
   const yFor = (v) => padT + plotH * (1 - (v - yMin) / (yMax - yMin));
 
   // grid + y-axis labels
@@ -963,52 +996,59 @@ function drawAprTrendChart(points) {
     ctx.stroke();
   }
 
-  if (n === 0) return;
+  if (n === 0) {
+    drawWindowAxisLabels(ctx, bounds, padL, padR, W, H, padB);
+    return;
+  }
 
-  // filled area under the line
-  ctx.beginPath();
-  ctx.moveTo(xFor(0), yFor(points[0].value));
-  points.forEach((p, i) => ctx.lineTo(xFor(i), yFor(p.value)));
-  ctx.lineTo(xFor(n - 1), yFor(yMin));
-  ctx.lineTo(xFor(0), yFor(yMin));
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(61, 220, 151, 0.12)';
-  ctx.fill();
+  // Points more than this far apart are a real gap in monitoring (the coin
+  // fell out of candidacy and later came back) rather than normal jitter
+  // around the server's hourly snapshot cadence (lib/aprHistory.js's
+  // SNAPSHOT_INTERVAL_MS) — the line/fill breaks there instead of drawing a
+  // straight segment across the gap, which would otherwise imply data that
+  // was never actually recorded.
+  const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
+  const segments = [[points[0]]];
+  for (let i = 1; i < n; i++) {
+    if (points[i].time - points[i - 1].time > GAP_THRESHOLD_MS) segments.push([]);
+    segments[segments.length - 1].push(points[i]);
+  }
 
-  // the line itself
-  ctx.beginPath();
-  points.forEach((p, i) => {
-    const x = xFor(i);
-    const y = yFor(p.value);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  segments.forEach((seg) => {
+    if (seg.length < 2) return; // a lone isolated point has nothing to connect to
+
+    // filled area under this segment's line
+    ctx.beginPath();
+    ctx.moveTo(xFor(seg[0].time), yFor(seg[0].value));
+    seg.forEach((p) => ctx.lineTo(xFor(p.time), yFor(p.value)));
+    ctx.lineTo(xFor(seg[seg.length - 1].time), yFor(yMin));
+    ctx.lineTo(xFor(seg[0].time), yFor(yMin));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(61, 220, 151, 0.12)';
+    ctx.fill();
+
+    // the line itself
+    ctx.beginPath();
+    seg.forEach((p, i) => {
+      const x = xFor(p.time);
+      const y = yFor(p.value);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#3ddc97';
+    ctx.lineWidth = 1.75;
+    ctx.stroke();
   });
-  ctx.strokeStyle = '#3ddc97';
-  ctx.lineWidth = 1.75;
-  ctx.stroke();
 
-  // endpoint dot
-  const lastX = xFor(n - 1);
+  // endpoint dot — the single most recent point overall
+  const lastX = xFor(points[n - 1].time);
   const lastY = yFor(points[n - 1].value);
   ctx.beginPath();
   ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
   ctx.fillStyle = '#3ddc97';
   ctx.fill();
 
-  // x-axis date labels (first, middle, last)
-  ctx.fillStyle = '#8a90a0';
-  ctx.textBaseline = 'top';
-  const labelIdx = [0, Math.floor((n - 1) / 2), n - 1];
-  const seen = new Set();
-  labelIdx.forEach((i) => {
-    if (seen.has(i)) return;
-    seen.add(i);
-    const x = xFor(i);
-    const d = new Date(points[i].time);
-    const label = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-    ctx.textAlign = i === 0 ? 'left' : i === n - 1 ? 'right' : 'center';
-    ctx.fillText(label, x, H - padB + 6);
-  });
+  drawWindowAxisLabels(ctx, bounds, padL, padR, W, H, padB);
 }
 
 async function loadAprTrend(row) {
