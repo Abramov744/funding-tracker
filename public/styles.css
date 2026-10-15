@@ -642,8 +642,8 @@ footer {
   height: 200px;
 }
 
-.chart-trend-section .chart-message {
-  padding: 24px 0;
+#aprTrendMessage {
+  min-height: 200px;
 }
 
 .spot-list {
@@ -691,6 +691,20 @@ footer {
   text-align: center;
   color: var(--muted);
   padding: 40px 0;
+}
+
+#chartMessage:not([hidden]),
+#aprTrendMessage:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+#chartMessage {
+  min-height: 320px;
 }
 
 .mobile-sort {
