@@ -362,6 +362,10 @@ tbody tr.match:hover { background: rgba(61, 220, 151, 0.2); }
 .negative { color: var(--negative); }
 .muted { color: var(--muted); }
 
+.oi-vol-signal {
+  cursor: help;
+}
+
 .empty-state {
   text-align: center;
   color: var(--muted);

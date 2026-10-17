@@ -213,6 +213,50 @@ function fmtCompactUsd(v) {
   return '$' + v.toFixed(0);
 }
 
+// Ratio thresholds for the OI/volume churn signal below. A 24h volume several
+// times the open interest means positions are being opened and closed fast
+// (frequent repositioning) — typical of volatile coins. A 24h volume well
+// under the open interest means whatever positions are open are mostly just
+// sitting there — typical of calm markets where traders hold for longer.
+const VOLUME_OI_CHURN_RATIO = 3;
+const VOLUME_OI_CALM_RATIO = 0.5;
+
+// Returns an icon+tooltip describing what the OI/volume ratio implies about
+// this market, or null when either figure is missing/zero (nothing to
+// compare) or the ratio falls in the unremarkable middle range.
+function volumeOiSignal(openInterestUsd, volume24hUsd) {
+  if (
+    openInterestUsd === null || openInterestUsd === undefined || !openInterestUsd ||
+    volume24hUsd === null || volume24hUsd === undefined
+  ) {
+    return null;
+  }
+  const ratio = volume24hUsd / openInterestUsd;
+  if (ratio >= VOLUME_OI_CHURN_RATIO) {
+    return {
+      icon: '🔥',
+      cls: 'churn',
+      title: `Высокий объём при низком OI (объём ≈ ${ratio.toFixed(1)}× OI) — похоже на волатильную монету с частой перетряской позиций`,
+    };
+  }
+  if (ratio <= VOLUME_OI_CALM_RATIO) {
+    return {
+      icon: '😌',
+      cls: 'calm',
+      title: `Высокий OI при низком объёме (объём ≈ ${ratio.toFixed(2)}× OI) — похоже на «спокойный» рынок, где позиции держат долго`,
+    };
+  }
+  return null;
+}
+
+function fmtOiVolume(row) {
+  const oiPart = fmtCompactUsd(row.openInterestUsd);
+  const volPart = fmtCompactUsd(row.volume24hUsd);
+  const signal = volumeOiSignal(row.openInterestUsd, row.volume24hUsd);
+  const badge = signal ? ` <span class="oi-vol-signal ${signal.cls}" title="${signal.title}">${signal.icon}</span>` : '';
+  return `${oiPart} / ${volPart}${badge}`;
+}
+
 function rowMatchesStrategy(row) {
   const minAvgApr = Number(els.minAvgApr.value);
   const minRatio = Number(els.minPositiveRatio.value) / 100;
@@ -426,7 +470,7 @@ function renderFundingTable() {
         <button type="button" class="coin-link" data-exchange="${row.exchange}" data-symbol="${row.symbol}" data-interval="${row.intervalHours ?? ''}">${row.baseAsset}</button>
       </td>
       <td data-label="Ранг CMC*">${row.marketCapRank ?? '—'}</td>
-      <td data-label="OI**">${fmtCompactUsd(row.openInterestUsd)}</td>
+      <td data-label="OI / Объём**">${fmtOiVolume(row)}</td>
       <td class="${rateClass}" data-label="Ставка (период)">${fmtPct(row.fundingRate)}</td>
       <td class="${aprClass}" data-label="APR %">${fmtAprPct(row.aprPct)}</td>
       <td data-label="Периодов">${fmtPeriods(row)}</td>
