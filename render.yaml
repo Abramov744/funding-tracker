@@ -1,0 +1,22 @@
+services:
+  - type: web
+    runtime: node
+    name: funding-tracker
+    plan: 0.5c-512mb # cheapest paid compute plan — free-tier services can't have a persistent disk; check current pricing/plan names in the Render dashboard before deploying, as these can change
+    buildCommand: npm install
+    startCommand: npm start
+    # /login.html is served before the login-required middleware kicks in
+    # (see server.js), so it's reachable for Render's health check without a
+    # session — unlike almost every other route, which 401s/redirects.
+    healthCheckPath: /login.html
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: AUTH_SECRET
+        sync: false # prompted for in the Render dashboard — paste the same value you used on Railway to keep existing sessions valid, or any new random string
+      - key: COINGECKO_API_KEY
+        sync: false # optional — leave blank in the dashboard prompt to skip it, same as not setting it on Railway
+    disk:
+      name: funding-tracker-data
+      mountPath: /var/data
+      sizeGB: 1 # holds guest-logins.json, apr-history.json and variational-funding-history.json — all small; raise later if ever needed, Render disks can grow but not shrink
