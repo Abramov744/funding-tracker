@@ -2,6 +2,7 @@ const path = require('path');
 const express = require('express');
 const cache = require('./lib/cache');
 const marketcap = require('./lib/marketcap');
+const rwaCoinList = require('./lib/rwaCoinList');
 const exchanges = require('./lib/exchanges');
 const auth = require('./lib/auth');
 const favorites = require('./lib/favorites');
@@ -272,14 +273,18 @@ app.get('/api/spot-prices', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Funding tracker listening on port ${PORT}`);
-  // Load market-cap ranks first so the very first funding refresh can already
-  // attach them, instead of every row showing "—" until the next cycle.
-  marketcap
-    .refresh()
-    .catch((err) => console.error('Initial CoinGecko rank fetch failed:', err))
-    .finally(() => {
-      marketcap.startAutoRefresh();
-      cache.startAutoRefresh();
-      aprHistory.startAutoSnapshot();
-    });
+  // Load the RWA coin list alongside market-cap ranks, before the very first
+  // funding refresh — marketcap.js's own RWA exclusion checks it (see
+  // lib/marketcap.js), and lib/cryptoassets.js's unranked-coin fallback needs
+  // it loaded to do anything useful from the first cycle, instead of every
+  // outside-top-1500 row reading as "not a coin" until the next cycle.
+  Promise.all([
+    marketcap.refresh().catch((err) => console.error('Initial CoinGecko rank fetch failed:', err)),
+    rwaCoinList.refresh().catch((err) => console.error('Initial CoinGecko RWA/coin-list fetch failed:', err)),
+  ]).finally(() => {
+    marketcap.startAutoRefresh();
+    rwaCoinList.startAutoRefresh();
+    cache.startAutoRefresh();
+    aprHistory.startAutoSnapshot();
+  });
 });
