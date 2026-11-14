@@ -1125,16 +1125,35 @@ async function loadAprTrend(row) {
   }
 }
 
-function spotRowHtml(v) {
+function spotRowHtml(v, refPrice, highlightCheaperSpotPrices) {
   // v.quote is omitted server-side when it isn't a real ticker (DEX pools often
   // report their quote token as a raw contract address instead of e.g. "USDT").
   const quote = v.quote ? ` <span class="muted">${v.quote}</span>` : '';
+  const cheaperThanFuture = highlightCheaperSpotPrices && Number(v.price) < refPrice;
   return `
     <div class="spot-row">
       <span class="spot-exchange">${v.name}</span>
-      <span class="spot-price">${fmtPrice(v.price)}${quote}</span>
+      <span class="spot-price${cheaperThanFuture ? ' positive' : ''}">${fmtPrice(v.price)}${quote}</span>
     </div>
   `;
+}
+
+function highlightSpotAndFuturesPrices(venues, refPrice) {
+  els.chartFuturesPrice.classList.remove('positive', 'negative');
+
+  const spotPrices = venues
+    .map((venue) => Number(venue.price))
+    .filter((price) => Number.isFinite(price) && price > 0);
+  if (!Number.isFinite(refPrice) || refPrice <= 0 || spotPrices.length === 0) return false;
+
+  if (refPrice < Math.min(...spotPrices)) {
+    els.chartFuturesPrice.classList.add('negative');
+    return false;
+  }
+
+  const hasCheaperSpot = spotPrices.some((price) => price < refPrice);
+  if (hasCheaperSpot) els.chartFuturesPrice.classList.add('positive');
+  return hasCheaperSpot;
 }
 
 async function loadSpotVenues(baseAsset, refPrice) {
@@ -1158,7 +1177,10 @@ async function loadSpotVenues(baseAsset, refPrice) {
       return;
     }
 
-    els.spotList.innerHTML = data.venues.map(spotRowHtml).join('');
+    const highlightCheaperSpotPrices = highlightSpotAndFuturesPrices(data.venues, refPrice);
+    els.spotList.innerHTML = data.venues
+      .map((venue) => spotRowHtml(venue, refPrice, highlightCheaperSpotPrices))
+      .join('');
   } catch (err) {
     els.spotList.hidden = true;
     els.spotMessage.hidden = false;
@@ -1171,6 +1193,7 @@ function openCoinChart(row) {
   els.chartTitle.textContent = `${row.baseAsset} — фандинг за 30 дней`;
   els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
   els.chartFuturesPrice.textContent = fmtPrice(row.price);
+  els.chartFuturesPrice.classList.remove('positive', 'negative');
 
   // Reset the APR-window selector back to its default (30Д) each time a
   // (possibly different) coin's popup is opened.
