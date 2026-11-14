@@ -30,6 +30,9 @@ function response(data) {
   assert(!bitfinex.isCryptoMarketKey('tXAUTF0:USTF0'), 'reject tokenized gold ticker collision');
   assert(!bitfinex.isCryptoMarketKey('tEUROPE50IXF0:USTF0'), 'reject index markets');
   assert(!bitfinex.isCryptoMarketKey('tTESTBTCF0:TESTUSDTF0'), 'reject testnet market');
+  assert(bitfinex.contractMetricToUsd(1000, 102, 'BTC') === 102000, 'convert BTC contracts to USD');
+  assert(bitfinex.contractMetricToUsd(1, 0.05, 'DOGE') === 50, 'apply DOGE contract size');
+  assert(bitfinex.contractMetricToUsd(1, 10, 'UNKNOWN') === null, 'leave unknown contract sizes blank');
 
   const now = Date.now();
   const nextFundingTime = now + 60_000;
@@ -42,6 +45,10 @@ function response(data) {
       ]);
     }
 
+    if (String(url).includes('/tickers?symbols=')) {
+      return response([['tBTCF0:USTF0', 102, 1, 103, 1, 1, 0.01, 103, 15, 104, 100, now]]);
+    }
+
     return response([
       [now - 2000, null, 101, 100, null, null, null, nextFundingTime, 0, 0, null, 0.0001],
       [now - 1000, null, 101, 100, null, null, null, nextFundingTime, 0, 0, null, 0.0002],
@@ -52,7 +59,8 @@ function response(data) {
   assert(current.length === 1 && current[0].symbol === 'BTC', 'filter status rows to crypto USDt markets');
   assert(current[0].fundingRate === 0.0003 && current[0].intervalHours === 8, 'map accrued rate and interval');
   assert(current[0].price === 102 && current[0].nextFundingTime === nextFundingTime, 'map price and settlement time');
-  assert(current[0].openInterestUsd === null && current[0].volume24hUsd === null, 'do not mislabel unknown USD metrics');
+  assert(current[0].openInterestUsd === 102000, 'convert OI contracts to USD');
+  assert(current[0].volume24hUsd === 1545, 'convert 24-hour ticker volume to USD');
 
   const history = await bitfinex.fetchHistory('BTC', 90);
   assert(history.length === 1, 'deduplicate repeated snapshots within one funding interval');
