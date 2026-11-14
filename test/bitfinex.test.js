@@ -30,9 +30,9 @@ function response(data) {
   assert(!bitfinex.isCryptoMarketKey('tXAUTF0:USTF0'), 'reject tokenized gold ticker collision');
   assert(!bitfinex.isCryptoMarketKey('tEUROPE50IXF0:USTF0'), 'reject index markets');
   assert(!bitfinex.isCryptoMarketKey('tTESTBTCF0:TESTUSDTF0'), 'reject testnet market');
-  assert(bitfinex.contractMetricToUsd(1000, 102, 'BTC') === 102000, 'convert BTC contracts to USD');
-  assert(bitfinex.contractMetricToUsd(1, 0.05, 'DOGE') === 50, 'apply DOGE contract size');
-  assert(bitfinex.contractMetricToUsd(1, 10, 'UNKNOWN') === null, 'leave unknown contract sizes blank');
+  assert(bitfinex.baseQuantityToUsd(1000, 102) === 102000, 'convert BTC base quantity to USD');
+  assert(bitfinex.baseQuantityToUsd(1000, 0.05) === 50, 'do not multiply DOGE by its order lot size');
+  assert(bitfinex.baseQuantityToUsd(1, 0) === null, 'reject invalid prices');
 
   const now = Date.now();
   const nextFundingTime = now + 60_000;
@@ -59,7 +59,7 @@ function response(data) {
   assert(current.length === 1 && current[0].symbol === 'BTC', 'filter status rows to crypto USDt markets');
   assert(current[0].fundingRate === 0.0003 && current[0].intervalHours === 8, 'map accrued rate and interval');
   assert(current[0].price === 102 && current[0].nextFundingTime === nextFundingTime, 'map price and settlement time');
-  assert(current[0].openInterestUsd === 102000, 'convert OI contracts to USD');
+  assert(current[0].openInterestUsd === 102000, 'convert OI base quantity to USD');
   assert(current[0].volume24hUsd === 1545, 'convert 24-hour ticker volume to USD');
 
   const history = await bitfinex.fetchHistory('BTC', 90);
