@@ -19,4 +19,4 @@ services:
     disk:
       name: funding-tracker-data
       mountPath: /var/data
-      sizeGB: 1 # holds guest-logins.json, apr-history.json and variational-funding-history.json — all small; raise later if ever needed, Render disks can grow but not shrink
+      sizeGB: 1 # holds guest-login and at-most-30-day APR/funding history files
