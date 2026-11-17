@@ -255,6 +255,30 @@
         <div id="spotList" class="spot-list"></div>
         <p id="spotMessage" class="chart-message" hidden></p>
       </div>
+
+      <div class="chart-spot-section">
+        <h3>Проверка стакана</h3>
+        <div class="orderbook-controls">
+          <label for="orderBookSize">Размер одной ноги, USDT
+            <input id="orderBookSize" type="number" min="0.01" step="any" value="100">
+          </label>
+          <button id="orderBookCheckBtn" class="orderbook-check-btn" type="button" disabled>Проверить стакан</button>
+        </div>
+        <p id="orderBookTarget" class="orderbook-target">Загружаю спотовые площадки…</p>
+        <p id="orderBookStatus" class="orderbook-status" hidden></p>
+        <div id="orderBookResult" class="orderbook-result" hidden>
+          <div class="orderbook-result-leg">
+            <span id="orderBookFuturesExchange" class="chart-price-label"></span>
+            <span class="chart-price-label">Средняя цена продажи шорта</span>
+            <strong id="orderBookFuturesPrice" class="chart-price-value">—</strong>
+          </div>
+          <div class="orderbook-result-leg">
+            <span id="orderBookSpotExchange" class="chart-price-label"></span>
+            <span class="chart-price-label">Средняя цена покупки спота</span>
+            <strong id="orderBookSpotPrice" class="chart-price-value">—</strong>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

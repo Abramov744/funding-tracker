@@ -63,6 +63,12 @@ const state = {
   chartIntervalHours: null,
   aprTrendPoints: [],
   aprWindowDays: 30,
+  chartRow: null,
+  chartSessionId: 0,
+  chartSpotVenues: [],
+  orderBookRequestId: 0,
+  orderBookChecking: false,
+  orderBookResult: null,
 };
 
 const els = {
@@ -96,6 +102,15 @@ const els = {
   aprTrendMessage: document.getElementById('aprTrendMessage'),
   spotList: document.getElementById('spotList'),
   spotMessage: document.getElementById('spotMessage'),
+  orderBookSize: document.getElementById('orderBookSize'),
+  orderBookCheckBtn: document.getElementById('orderBookCheckBtn'),
+  orderBookTarget: document.getElementById('orderBookTarget'),
+  orderBookStatus: document.getElementById('orderBookStatus'),
+  orderBookResult: document.getElementById('orderBookResult'),
+  orderBookFuturesExchange: document.getElementById('orderBookFuturesExchange'),
+  orderBookFuturesPrice: document.getElementById('orderBookFuturesPrice'),
+  orderBookSpotExchange: document.getElementById('orderBookSpotExchange'),
+  orderBookSpotPrice: document.getElementById('orderBookSpotPrice'),
   mobileSortKey: document.getElementById('mobileSortKey'),
   mobileSortDir: document.getElementById('mobileSortDir'),
   favToggle: document.getElementById('favToggle'),
@@ -826,6 +841,16 @@ function drawFundingChart(history, bounds) {
 
 function closeChart() {
   els.chartOverlay.hidden = true;
+  state.chartSessionId += 1;
+  state.orderBookRequestId += 1;
+  state.chartRow = null;
+  state.chartSpotVenues = [];
+  state.orderBookChecking = false;
+  els.orderBookSize.value = '';
+  els.orderBookSize.disabled = false;
+  els.orderBookCheckBtn.disabled = true;
+  els.orderBookTarget.textContent = '';
+  clearOrderBookResult();
 }
 
 async function loadFundingChart(row) {
@@ -1156,7 +1181,10 @@ function highlightSpotAndFuturesPrices(venues, refPrice) {
   return hasCheaperSpot;
 }
 
-async function loadSpotVenues(baseAsset, refPrice) {
+async function loadSpotVenues(baseAsset, refPrice, sessionId) {
+  state.chartSpotVenues = [];
+  els.orderBookCheckBtn.disabled = true;
+  els.orderBookTarget.textContent = 'Загружаю спотовые площадки…';
   els.spotMessage.hidden = true;
   els.spotList.hidden = false;
   els.spotList.innerHTML = '<p class="chart-message">Загрузка…</p>';
@@ -1166,30 +1194,138 @@ async function loadSpotVenues(baseAsset, refPrice) {
     if (Number.isFinite(refPrice) && refPrice > 0) params.set('refPrice', refPrice);
     const res = await fetch(`/api/spot-prices?${params.toString()}`);
     const data = await res.json();
+    if (sessionId !== state.chartSessionId || els.chartOverlay.hidden) return;
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
     if (!data.venues || data.venues.length === 0) {
+      state.chartSpotVenues = [];
       els.spotList.hidden = true;
       els.spotMessage.hidden = false;
       els.spotMessage.textContent = data.coingeckoId
         ? 'Не нашлось данных о спот-торговле этой монетой ни на одной бирже.'
         : 'Монета не найдена в базе CoinGecko — сравнение спот-цен недоступно.';
+      els.orderBookTarget.textContent = 'Нет спотовой площадки для проверки стакана.';
       return;
     }
 
+    state.chartSpotVenues = data.venues;
+    els.orderBookTarget.textContent = `Спот: ${data.venues[0].name} — минимальная цена в списке.`;
+    els.orderBookCheckBtn.disabled = false;
     const highlightCheaperSpotPrices = highlightSpotAndFuturesPrices(data.venues, refPrice);
     els.spotList.innerHTML = data.venues
       .map((venue) => spotRowHtml(venue, refPrice, highlightCheaperSpotPrices))
       .join('');
   } catch (err) {
+    if (sessionId !== state.chartSessionId || els.chartOverlay.hidden) return;
+    state.chartSpotVenues = [];
     els.spotList.hidden = true;
     els.spotMessage.hidden = false;
     els.spotMessage.textContent = 'Не удалось загрузить спот-цены: ' + (err.message || err);
+    els.orderBookTarget.textContent = 'Список спотовых площадок недоступен.';
+  }
+}
+
+function clearOrderBookResult() {
+  state.orderBookResult = null;
+  els.orderBookResult.hidden = true;
+  els.orderBookStatus.hidden = true;
+  els.orderBookStatus.textContent = '';
+  els.orderBookFuturesExchange.textContent = '';
+  els.orderBookFuturesPrice.textContent = '—';
+  els.orderBookFuturesPrice.classList.remove('positive', 'negative');
+  els.orderBookSpotExchange.textContent = '';
+  els.orderBookSpotPrice.textContent = '—';
+  els.orderBookSpotPrice.classList.remove('positive', 'negative');
+}
+
+async function checkOrderBook() {
+  const row = state.chartRow;
+  const venue = state.chartSpotVenues[0];
+  const sizeUsdt = Number(els.orderBookSize.value);
+  if (!row || !venue || state.orderBookChecking) return;
+  if (!Number.isFinite(sizeUsdt) || sizeUsdt <= 0) {
+    els.orderBookStatus.hidden = false;
+    els.orderBookStatus.textContent = 'Введите размер одной ноги в USDT больше нуля.';
+    return;
+  }
+
+  const requestId = ++state.orderBookRequestId;
+  const sessionId = state.chartSessionId;
+  state.orderBookChecking = true;
+  clearOrderBookResult();
+  els.orderBookSize.disabled = true;
+  els.orderBookCheckBtn.disabled = true;
+  els.orderBookCheckBtn.textContent = 'Проверяю…';
+  els.orderBookStatus.hidden = false;
+  els.orderBookStatus.textContent = 'Запрашиваю оба стакана…';
+
+  try {
+    const res = await fetch('/api/orderbook-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        futuresExchange: row.exchange,
+        futuresSymbol: row.symbol,
+        spotExchangeId: venue.id,
+        base: row.baseAsset,
+        quote: venue.quote,
+        sizeUsdt,
+      }),
+    });
+    const data = await res.json();
+    if (requestId !== state.orderBookRequestId || sessionId !== state.chartSessionId || els.chartOverlay.hidden) return;
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    state.orderBookResult = data;
+    els.orderBookFuturesExchange.textContent = `${row.exchangeLabel} · ${row.symbol}`;
+    els.orderBookFuturesPrice.textContent = fmtPrice(data.futuresAveragePrice);
+    els.orderBookSpotExchange.textContent = `${venue.name} · ${row.baseAsset}/${venue.quote}`;
+    els.orderBookSpotPrice.textContent = fmtPrice(data.spotAveragePrice);
+
+    const fullyFilled = data.futuresComplete && data.spotComplete;
+    if (fullyFilled && data.spotAveragePrice > data.futuresAveragePrice) {
+      els.orderBookSpotPrice.classList.add('negative');
+    } else if (fullyFilled && data.spotAveragePrice < data.futuresAveragePrice) {
+      els.orderBookSpotPrice.classList.add('positive');
+    }
+
+    els.orderBookResult.hidden = false;
+    if (fullyFilled) {
+      els.orderBookStatus.hidden = true;
+      els.orderBookStatus.textContent = '';
+    } else {
+      const missing = [];
+      if (!data.futuresComplete) missing.push('фьючерсный стакан');
+      if (!data.spotComplete) missing.push('спотовый стакан');
+      els.orderBookStatus.textContent = `Недостаточная глубина: ${missing.join(' и ')} не покрывает весь объём. Средние цены рассчитаны по доступным уровням.`;
+    }
+  } catch (err) {
+    if (requestId !== state.orderBookRequestId || sessionId !== state.chartSessionId || els.chartOverlay.hidden) return;
+    els.orderBookStatus.hidden = false;
+    els.orderBookStatus.textContent = 'Не удалось проверить стакан: ' + (err.message || err);
+  } finally {
+    if (requestId === state.orderBookRequestId && sessionId === state.chartSessionId && !els.chartOverlay.hidden) {
+      state.orderBookChecking = false;
+      els.orderBookSize.disabled = false;
+      els.orderBookCheckBtn.disabled = state.chartSpotVenues.length === 0;
+      els.orderBookCheckBtn.textContent = 'Проверить стакан';
+    }
   }
 }
 
 function openCoinChart(row) {
+  const sessionId = ++state.chartSessionId;
   els.chartOverlay.hidden = false;
+  state.chartRow = row;
+  state.chartSpotVenues = [];
+  state.orderBookRequestId += 1;
+  state.orderBookChecking = false;
+  els.orderBookSize.value = '100';
+  els.orderBookSize.disabled = false;
+  els.orderBookCheckBtn.disabled = true;
+  els.orderBookCheckBtn.textContent = 'Проверить стакан';
+  els.orderBookTarget.textContent = 'Загружаю спотовые площадки…';
+  clearOrderBookResult();
   els.chartTitle.textContent = `${row.baseAsset} — фандинг за 30 дней`;
   els.chartSubtitle.textContent = `${row.exchangeLabel} · ${row.symbol}`;
   els.chartFuturesPrice.textContent = fmtPrice(row.price);
@@ -1205,7 +1341,7 @@ function openCoinChart(row) {
   // Independent lookups — kick all three off at once instead of chaining them.
   loadFundingChart(row);
   loadAprTrend(row);
-  loadSpotVenues(row.baseAsset, row.price);
+  loadSpotVenues(row.baseAsset, row.price, sessionId);
 }
 
 // --- Spread pair funding-history chart popup (click a coin name in the
@@ -1445,6 +1581,12 @@ document.querySelectorAll('.apr-window-btn').forEach((btn) => {
 });
 
 els.chartClose.addEventListener('click', closeChart);
+els.orderBookCheckBtn.addEventListener('click', checkOrderBook);
+els.orderBookSize.addEventListener('input', () => {
+  if (state.orderBookChecking) return;
+  state.orderBookRequestId += 1;
+  clearOrderBookResult();
+});
 els.chartOverlay.addEventListener('click', (e) => {
   if (e.target === els.chartOverlay) closeChart();
 });
