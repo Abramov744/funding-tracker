@@ -24,7 +24,7 @@ async function main() {
     if (String(url).includes('/md/v2/orderbook')) {
       return response({
         error: null,
-        result: { book: { bids: [['100', '1'], ['90', '1']], asks: [['101', '1']] } },
+        result: { orderbook_p: { bids: [['100', '1'], ['90', '1']], asks: [['101', '1']] } },
       });
     }
     if (String(url).includes('/api/v1/orderBookDetails')) {
@@ -54,6 +54,27 @@ async function main() {
     }
     if (String(url).includes('futures.ourbit.com/api/v1/contract/detail')) {
       return response({ data: [{ symbol: 'BTC_USDT', contractSize: 0.01 }] });
+    }
+    if (String(url).includes('/api/v4/futures/usdt/order_book')) {
+      return response({ bids: [{ p: '100', s: 100 }, { p: '90', s: 100 }], asks: [{ p: '101', s: 100 }] });
+    }
+    if (String(url).includes('/api/v4/futures/usdt/contracts/BTC_USDT')) {
+      return response({ quanto_multiplier: 0.01 });
+    }
+    if (String(url).includes('api-futures.kucoin.com/api/v1/level2/snapshot')) {
+      return response({ code: '200000', data: { bids: [['100', '100'], ['90', '100']], asks: [['101', '100']] } });
+    }
+    if (String(url).includes('api-futures.kucoin.com/api/v1/contracts/active')) {
+      return response({ code: '200000', data: [{ symbol: 'XBTUSDTM', multiplier: 0.01 }] });
+    }
+    if (String(url).includes('/cfd/openApi/v1/pub/marketOrder')) {
+      return response({ data: {
+        bids: [{ price: '100', volume: '1' }, { price: '90', volume: '1' }],
+        asks: [{ price: '101', volume: '1' }],
+      } });
+    }
+    if (String(url).includes('/orderbooks/perpetualMarket/')) {
+      return response({ bids: [{ price: '100', size: '1' }, { price: '90', size: '1' }], asks: [{ price: '101', size: '1' }] });
     }
     if (String(url).includes('/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
@@ -89,10 +110,13 @@ async function main() {
   assert(!partial.futuresComplete, 'report an incomplete futures fill');
   assert(!partial.favorable, 'an incomplete futures fill must not be marked favorable');
 
-  for (const futuresExchange of ['phemex', 'lighter']) {
+  for (const [futuresExchange, futuresSymbol] of [
+    ['phemex', 'BTCUSDT'], ['lighter', 'BTC'], ['gate', 'BTC_USDT'],
+    ['kucoin', 'XBTUSDTM'], ['lbank', 'BTCUSDT'], ['dydx', 'BTC-USD'],
+  ]) {
     const result = await checkOrderBook({
       futuresExchange,
-      futuresSymbol: futuresExchange === 'lighter' ? 'BTC' : 'BTCUSDT',
+      futuresSymbol,
       spotExchangeId: 'mexc',
       base: 'BTC',
       quote: 'USDT',
