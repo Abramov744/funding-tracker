@@ -456,14 +456,25 @@ footer {
   padding: 20px 24px 24px;
   width: 100%;
   max-width: 820px;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .chart-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin: -20px -24px 12px;
+  padding: 16px 24px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
 }
 
 .chart-modal-header h2 {
@@ -956,10 +967,15 @@ footer {
   .chart-modal {
     max-width: none;
     width: 100%;
-    max-height: 100%;
+    max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
     padding: 16px 16px 24px;
-    overflow-y: auto;
+  }
+
+  .chart-modal-header {
+    margin: -16px -16px 12px;
+    padding: 14px 16px 10px;
   }
 
   .chart-modal-header h2 { font-size: 16px; }
