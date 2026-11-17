@@ -7,6 +7,7 @@ const exchanges = require('./lib/exchanges');
 const auth = require('./lib/auth');
 const favorites = require('./lib/favorites');
 const aprHistory = require('./lib/aprHistory');
+const orderBooks = require('./lib/orderBooks');
 const { PRICE_BAND } = require('./lib/cryptoassets');
 
 const app = express();
@@ -268,6 +269,38 @@ app.get('/api/spot-prices', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(502).json({ error: err.message || String(err) });
+  }
+});
+
+app.post('/api/orderbook-check', async (req, res) => {
+  const {
+    futuresExchange,
+    futuresSymbol,
+    spotExchangeId,
+    base,
+    quote,
+    sizeUsdt,
+  } = req.body || {};
+
+  if (!futuresExchange || !futuresSymbol || !spotExchangeId || !base || !quote) {
+    return res.status(400).json({ error: 'Не хватает параметров для проверки стакана.' });
+  }
+  if (!Number.isFinite(Number(sizeUsdt)) || Number(sizeUsdt) <= 0) {
+    return res.status(400).json({ error: 'Укажите размер позиции в USDT больше нуля.' });
+  }
+
+  try {
+    const result = await orderBooks.checkOrderBook({
+      futuresExchange,
+      futuresSymbol,
+      spotExchangeId,
+      base,
+      quote,
+      sizeUsdt,
+    });
+    return res.json(result);
+  } catch (err) {
+    return res.status(502).json({ error: err.message || String(err) });
   }
 });
 
