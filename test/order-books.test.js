@@ -43,6 +43,18 @@ async function main() {
         asks: [{ price: '101', remaining_base_amount: '1' }],
       });
     }
+    if (String(url).includes('contract.mexc.com/api/v1/contract/depth/')) {
+      return response({ data: { bids: [['100', '100'], ['90', '100']], asks: [['101', '100']] } });
+    }
+    if (String(url).includes('futures.ourbit.com/api/v1/contract/depth/')) {
+      return response({ data: { bids: [['100', '100'], ['90', '100']], asks: [['101', '100']] } });
+    }
+    if (String(url).includes('contract.mexc.com/api/v1/contract/detail')) {
+      return response({ data: [{ symbol: 'BTC_USDT', contractSize: 0.01 }] });
+    }
+    if (String(url).includes('futures.ourbit.com/api/v1/contract/detail')) {
+      return response({ data: [{ symbol: 'BTC_USDT', contractSize: 0.01 }] });
+    }
     if (String(url).includes('/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
     }
@@ -87,6 +99,20 @@ async function main() {
       sizeUsdt: 190,
     });
     closeTo(result.futuresAveragePrice, 95, `${futuresExchange} short uses the returned bid depth`);
+    assert(result.futuresComplete, `${futuresExchange} covers the requested short size`);
+  }
+
+  for (const futuresExchange of ['mexc', 'ourbit']) {
+    const result = await checkOrderBook({
+      futuresExchange,
+      futuresSymbol: 'BTC_USDT',
+      spotExchangeId: 'mexc',
+      base: 'BTC',
+      quote: 'USDT',
+      sizeUsdt: 190,
+    });
+    closeTo(result.baseQuantity, 2, `${futuresExchange} converts contract volume into BTC`);
+    closeTo(result.futuresAveragePrice, 95, `${futuresExchange} leaves BTC prices unscaled`);
     assert(result.futuresComplete, `${futuresExchange} covers the requested short size`);
   }
 
