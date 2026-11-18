@@ -76,6 +76,9 @@ async function main() {
     if (String(url).includes('/orderbooks/perpetualMarket/')) {
       return response({ bids: [{ price: '100', size: '1' }, { price: '90', size: '1' }], asks: [{ price: '101', size: '1' }] });
     }
+    if (String(url).includes('api.ourbit.com/api/v3/depth')) {
+      return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
+    }
     if (String(url).includes('/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
     }
@@ -109,6 +112,17 @@ async function main() {
 
   assert(!partial.futuresComplete, 'report an incomplete futures fill');
   assert(!partial.favorable, 'an incomplete futures fill must not be marked favorable');
+
+  const ourbitSpot = await checkOrderBook({
+    futuresExchange: 'aster',
+    futuresSymbol: 'BTCUSDT',
+    spotExchangeId: 'ourbit',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(ourbitSpot.spotAveragePrice, 90, 'Ourbit spot uses ask-side depth');
+  assert(ourbitSpot.spotComplete, 'Ourbit spot covers the requested buy size');
 
   for (const [futuresExchange, futuresSymbol] of [
     ['phemex', 'BTCUSDT'], ['lighter', 'BTC'], ['gate', 'BTC_USDT'],
