@@ -1201,9 +1201,7 @@ async function loadSpotVenues(baseAsset, refPrice, sessionId) {
       state.chartSpotVenues = [];
       els.spotList.hidden = true;
       els.spotMessage.hidden = false;
-      els.spotMessage.textContent = data.coingeckoId
-        ? 'Не нашлось данных о спот-торговле этой монетой ни на одной бирже.'
-        : 'Монета не найдена в базе CoinGecko — сравнение спот-цен недоступно.';
+      els.spotMessage.textContent = 'Не нашлось данных о спот-торговле этой монетой ни на одной поддерживаемой бирже.';
       els.orderBookTarget.textContent = 'Нет спотовой площадки для проверки стакана.';
       return;
     }

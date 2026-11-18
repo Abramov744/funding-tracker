@@ -1,5 +1,5 @@
 const path = require('path');
-const { checkOrderBook } = require(path.join(__dirname, '..', 'lib', 'orderBooks.js'));
+const { checkOrderBook, getSpotVenuePrices } = require(path.join(__dirname, '..', 'lib', 'orderBooks.js'));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -163,6 +163,12 @@ async function main() {
     });
     closeTo(result.futuresAveragePrice, 95, `${futuresExchange} short uses the returned bid depth`);
     assert(result.futuresComplete, `${futuresExchange} covers the requested short size`);
+  }
+
+  const directVenues = await getSpotVenuePrices('BTC');
+  assert(directVenues.length > 0, 'direct spot venue aggregation returns at least one venue');
+  for (let i = 1; i < directVenues.length; i += 1) {
+    assert(directVenues[i - 1].price <= directVenues[i].price, 'direct spot venues are sorted by price');
   }
 
   for (const futuresExchange of ['mexc', 'ourbit']) {

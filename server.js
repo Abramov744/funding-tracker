@@ -14,17 +14,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HISTORY_DAYS = 30;
 const HISTORY_MAX_LIMIT = 750; // safety cap for exchanges with short funding intervals (e.g. 1h)
-const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-const SPOT_PRICE_CACHE_MS = 60 * 1000; // spare CoinGecko's rate limit on repeat popup opens
+const SPOT_PRICE_CACHE_MS = 60 * 1000;
 const spotPriceCache = new Map(); // baseAsset (uppercase) -> { expiresAt, data }
-
-async function getJson(url) {
-  const headers = { 'User-Agent': 'funding-tracker/1.0' };
-  if (process.env.COINGECKO_API_KEY) headers['x-cg-demo-api-key'] = process.env.COINGECKO_API_KEY;
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error(`CoinGecko ${url} -> HTTP ${res.status}`);
-  return res.json();
-}
 
 app.use(express.json());
 
@@ -181,90 +172,26 @@ app.get('/api/apr-history', (req, res) => {
 
 const SPOT_VENUE_LIMIT = 10;
 
-// CoinGecko's ticker `target` field is normally a clean quote symbol (USDT,
-// USDC, ...), but for DEX pools (Uniswap, PancakeSwap, ...) it's often the
-// quote token's raw contract address instead — an EVM hex address (0x + 40
-// hex chars) or a Solana base58 mint address, neither of which means
-// anything to a reader. Real quote tickers are always short, so anything
-// longer is almost certainly an address and gets dropped rather than shown.
-const MAX_QUOTE_SYMBOL_LENGTH = 12;
-function cleanQuote(target) {
-  if (!target || typeof target !== 'string') return null;
-  return target.length <= MAX_QUOTE_SYMBOL_LENGTH ? target : null;
-}
-
-// Spot prices for one coin across the exchanges currently trading it with the
-// most 24h volume — backs the "where can I buy this on spot" list in the
-// funding-history popup.
+// Spot prices are sourced directly from public order books on exchanges whose
+// spot adapter is enabled. CoinGecko is not used for this popup calculation.
 app.get('/api/spot-prices', async (req, res) => {
   const symbol = (req.query.symbol || '').toString().trim();
   if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
 
-  // The row's own perp price (from the funding-rate exchange), passed by the
-  // client — used below as a sanity check against CoinGecko's tickers.
   const refPrice = Number(req.query.refPrice);
   const hasRefPrice = Number.isFinite(refPrice) && refPrice > 0;
-
   const cacheKey = symbol.toUpperCase();
   const cached = spotPriceCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return res.json(cached.data);
 
-  const coingeckoId = marketcap.lookupId(symbol);
-  if (!coingeckoId) {
-    const data = { symbol, coingeckoId: null, venues: [] };
-    spotPriceCache.set(cacheKey, { data, expiresAt: Date.now() + SPOT_PRICE_CACHE_MS });
-    return res.json(data);
-  }
-
   try {
-    const result = await getJson(`${COINGECKO_BASE}/coins/${coingeckoId}/tickers?include_exchange_logo=false`);
-    const tickers = (result && result.tickers) || [];
-
-    // An exchange can list several pairs for the same coin (BTC/USDT, BTC/USDC, ...) —
-    // keep only its most-traded pair, since that's the price/volume that actually
-    // represents "buying this coin on spot there".
-    const bestByExchange = new Map();
-    for (const t of tickers) {
-      const id = t.market && t.market.identifier;
-      const volumeUsd = t.converted_volume && t.converted_volume.usd;
-      if (!id || t.last == null || volumeUsd == null) continue;
-
-      // Skip tickers whose quote isn't a recognizable currency rather than just
-      // hiding the label: t.last is only meaningful as "the price" when it's
-      // quoted against something dollar-like (USDT/USDC/...). A DEX pool quoted
-      // against a volatile token (WETH, WBNB, ...) reports t.last in *that*
-      // token, not USD — displaying it with our "$" price formatting would be
-      // wrong, not just unlabeled, so that pool is excluded entirely instead of
-      // shown with a misleading price.
-      const quote = cleanQuote(t.target);
-      if (!quote) continue;
-
-      // CoinGecko's ticker `symbol -> coin id` match can land on the wrong
-      // coin (ticker collisions are common among low-cap coins), and even a
-      // correctly-matched coin's own ticker list can include a thinly-traded
-      // DEX pool with garbage pricing (bad liquidity/decimals on CoinGecko's
-      // side) — either way the giveaway is a price nowhere near what this
-      // symbol is actually trading at on the funding-rate exchange we already
-      // trust. Same ±2x band lib/cryptoassets.js uses to catch the same kind
-      // of collision when classifying crypto vs. tokenized stocks.
-      if (hasRefPrice && (t.last < refPrice / PRICE_BAND || t.last > refPrice * PRICE_BAND)) continue;
-
-      const existing = bestByExchange.get(id);
-      if (!existing || volumeUsd > existing.volumeUsd) {
-        bestByExchange.set(id, { name: (t.market && t.market.name) || id, price: t.last, quote, volumeUsd });
-      }
-    }
-
-    // Which venues make the list is still decided by 24h volume (per the
-    // "топ-10 бирж по объёму торгов" caption in the popup) — only the display
-    // order changes, to price ascending, once that top-10 is picked.
-    const venues = Array.from(bestByExchange.entries())
-      .map(([id, v]) => ({ id, ...v }))
-      .sort((a, b) => b.volumeUsd - a.volumeUsd)
-      .slice(0, SPOT_VENUE_LIMIT)
-      .sort((a, b) => a.price - b.price);
-
-    const data = { symbol, coingeckoId, venues };
+    const allVenues = await orderBooks.getSpotVenuePrices(symbol);
+    const filtered = allVenues.filter((venue) => {
+      if (!hasRefPrice) return true;
+      return venue.price >= refPrice / PRICE_BAND && venue.price <= refPrice * PRICE_BAND;
+    });
+    const venues = filtered.slice(0, SPOT_VENUE_LIMIT);
+    const data = { symbol, coingeckoId: marketcap.lookupId(symbol), venues };
     spotPriceCache.set(cacheKey, { data, expiresAt: Date.now() + SPOT_PRICE_CACHE_MS });
     res.json(data);
   } catch (err) {
