@@ -79,6 +79,9 @@ async function main() {
     if (String(url).includes('api.ourbit.com/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
     }
+    if (String(url).includes('sapi.asterdex.com/api/v3/depth')) {
+      return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
+    }
     if (String(url).includes('/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
     }
@@ -112,6 +115,17 @@ async function main() {
 
   assert(!partial.futuresComplete, 'report an incomplete futures fill');
   assert(!partial.favorable, 'an incomplete futures fill must not be marked favorable');
+
+  const asterSpot = await checkOrderBook({
+    futuresExchange: 'aster',
+    futuresSymbol: 'BTCUSDT',
+    spotExchangeId: 'aster',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(asterSpot.spotAveragePrice, 90, 'Aster spot uses ask-side depth');
+  assert(asterSpot.spotComplete, 'Aster spot covers the requested buy size');
 
   const mexcSpot = await checkOrderBook({
     futuresExchange: 'aster',
