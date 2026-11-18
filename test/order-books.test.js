@@ -113,6 +113,17 @@ async function main() {
   assert(!partial.futuresComplete, 'report an incomplete futures fill');
   assert(!partial.favorable, 'an incomplete futures fill must not be marked favorable');
 
+  const mexcSpot = await checkOrderBook({
+    futuresExchange: 'aster',
+    futuresSymbol: 'BTCUSDT',
+    spotExchangeId: 'mxc',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(mexcSpot.spotAveragePrice, 90, 'MEXC spot alias uses ask-side depth');
+  assert(mexcSpot.spotComplete, 'MEXC spot alias covers the requested buy size');
+
   const ourbitSpot = await checkOrderBook({
     futuresExchange: 'aster',
     futuresSymbol: 'BTCUSDT',
