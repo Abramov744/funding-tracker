@@ -76,6 +76,13 @@ async function main() {
     if (String(url).includes('/orderbooks/perpetualMarket/')) {
       return response({ bids: [{ price: '100', size: '1' }, { price: '90', size: '1' }], asks: [{ price: '101', size: '1' }] });
     }
+    if (String(url).includes('/api/v1/info/markets/BTC-USD/orderbook')) {
+      return response({ status: 'OK', data: {
+        market: 'BTC-USD',
+        bid: [{ price: '100', qty: '1' }, { price: '90', qty: '1' }],
+        ask: [{ price: '101', qty: '1' }],
+      } });
+    }
     if (String(url).includes('api.ourbit.com/api/v3/depth')) {
       return response({ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] });
     }
@@ -150,6 +157,7 @@ async function main() {
   assert(ourbitSpot.spotComplete, 'Ourbit spot covers the requested buy size');
 
   for (const [futuresExchange, futuresSymbol] of [
+    ['extended', 'BTC-USD'],
     ['phemex', 'BTCUSDT'], ['lighter', 'BTC'], ['gate', 'BTC_USDT'],
     ['kucoin', 'XBTUSDTM'], ['lbank', 'BTCUSDT'], ['dydx', 'BTC-USD'],
   ]) {
