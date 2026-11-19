@@ -76,6 +76,12 @@ async function main() {
     if (String(url).includes('/orderbooks/perpetualMarket/')) {
       return response({ bids: [{ price: '100', size: '1' }, { price: '90', size: '1' }], asks: [{ price: '101', size: '1' }] });
     }
+    if (String(url).includes('/api/v2/public/meta/getMetaData')) {
+      return response({ code: 'SUCCESS', data: { contractList: [{ contractId: '30000001', contractName: 'BTCUSDC', enableTrade: true }] } });
+    }
+    if (String(url).includes('/api/v2/public/quote/getDepth')) {
+      return response({ code: 'SUCCESS', data: [{ bids: [{ price: '100', size: '1' }, { price: '90', size: '1' }], asks: [{ price: '101', size: '1' }] }] });
+    }
     if (String(url).includes('/api/v1/info/markets/BTC-USD/orderbook')) {
       return response({ status: 'OK', data: {
         market: 'BTC-USD',
@@ -157,7 +163,7 @@ async function main() {
   assert(ourbitSpot.spotComplete, 'Ourbit spot covers the requested buy size');
 
   for (const [futuresExchange, futuresSymbol] of [
-    ['extended', 'BTC-USD'],
+    ['edgex', 'BTCUSDC'], ['extended', 'BTC-USD'],
     ['phemex', 'BTCUSDT'], ['lighter', 'BTC'], ['gate', 'BTC_USDT'],
     ['kucoin', 'XBTUSDTM'], ['lbank', 'BTCUSDT'], ['dydx', 'BTC-USD'],
   ]) {
