@@ -637,8 +637,9 @@ els.filterPresetBtns.forEach((btn) => {
 const allExFilters = Array.from(document.querySelectorAll('.ex-filter'));
 
 function updateExDropdownLabel() {
-  const checkedCount = allExFilters.filter((el) => el.checked).length;
-  els.exDropdownLabel.textContent = `Биржи: ${checkedCount}/${allExFilters.length}`;
+  const enabledFilters = allExFilters.filter((el) => !el.disabled);
+  const checkedCount = enabledFilters.filter((el) => el.checked).length;
+  els.exDropdownLabel.textContent = `Биржи: ${checkedCount}/${enabledFilters.length}`;
 }
 
 allExFilters.forEach((el) =>
@@ -650,7 +651,7 @@ allExFilters.forEach((el) =>
 
 function setAllExchangeFilters(checked) {
   allExFilters.forEach((el) => {
-    el.checked = checked;
+    if (!el.disabled) el.checked = checked;
   });
   updateExDropdownLabel();
   render();
