@@ -111,6 +111,8 @@ const els = {
   orderBookFuturesPrice: document.getElementById('orderBookFuturesPrice'),
   orderBookSpotExchange: document.getElementById('orderBookSpotExchange'),
   orderBookSpotPrice: document.getElementById('orderBookSpotPrice'),
+  orderBookPnl: document.getElementById('orderBookPnl'),
+  orderBookPnlNote: document.getElementById('orderBookPnlNote'),
   mobileSortKey: document.getElementById('mobileSortKey'),
   mobileSortDir: document.getElementById('mobileSortDir'),
   favToggle: document.getElementById('favToggle'),
@@ -1235,6 +1237,9 @@ function clearOrderBookResult() {
   els.orderBookSpotExchange.textContent = '';
   els.orderBookSpotPrice.textContent = '—';
   els.orderBookSpotPrice.classList.remove('positive', 'negative');
+  els.orderBookPnl.textContent = '—';
+  els.orderBookPnl.classList.remove('positive', 'negative');
+  els.orderBookPnlNote.textContent = '';
 }
 
 async function checkOrderBook() {
@@ -1286,6 +1291,18 @@ async function checkOrderBook() {
       els.orderBookSpotPrice.classList.add('negative');
     } else if (fullyFilled && data.spotAveragePrice < data.futuresAveragePrice) {
       els.orderBookSpotPrice.classList.add('positive');
+    }
+
+    if (fullyFilled && Number.isFinite(data.baseQuantity) && data.baseQuantity > 0) {
+      const pnlUsdt = data.baseQuantity * (data.futuresAveragePrice - data.spotAveragePrice);
+      const pnlClass = pnlUsdt > 0 ? 'positive' : pnlUsdt < 0 ? 'negative' : '';
+      const sign = pnlUsdt > 0 ? '+' : '';
+      els.orderBookPnl.textContent = `${sign}${pnlUsdt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+      if (pnlClass) els.orderBookPnl.classList.add(pnlClass);
+      els.orderBookPnlNote.textContent = `На объём ${data.baseQuantity.toLocaleString('en-US', { maximumFractionDigits: 8 })} ${row.baseAsset}`;
+    } else {
+      els.orderBookPnl.textContent = 'Недостаточно глубины';
+      els.orderBookPnlNote.textContent = 'Расчёт доступен, когда оба стакана покрывают весь объём.';
     }
 
     els.orderBookResult.hidden = false;
