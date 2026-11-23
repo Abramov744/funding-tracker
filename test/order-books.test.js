@@ -18,7 +18,24 @@ function response(data) {
 async function main() {
   let futuresBids = [['100', '1'], ['90', '1']];
   let paradexUrl = '';
+  let pacificaUrl = '';
   global.fetch = async (url) => {
+    if (String(url).includes('/api/v1/book?symbol=')) {
+      pacificaUrl = String(url);
+      return response({
+        success: true,
+        data: {
+          s: 'BTC',
+          l: [
+            [{ p: '100', a: '1', n: 1 }, { p: '90', a: '1', n: 1 }],
+            [{ p: '101', a: '2', n: 1 }],
+          ],
+          t: 1795435200000,
+        },
+        error: null,
+        code: null,
+      });
+    }
     if (String(url).includes('/v1/orderbook/')) {
       paradexUrl = String(url);
       return response({
@@ -262,6 +279,18 @@ async function main() {
   closeTo(paradex.futuresAveragePrice, 95, 'Paradex parses public bid levels and calculates the short average');
   assert(paradex.futuresComplete, 'Paradex book covers the requested short size');
   assert(paradexUrl.includes('/v1/orderbook/BTC-USD-PERP?depth=100'), 'Paradex requests the public orderbook snapshot with depth');
+
+  const pacifica = await checkOrderBook({
+    futuresExchange: 'pacifica',
+    futuresSymbol: 'BTC',
+    spotExchangeId: 'mexc',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(pacifica.futuresAveragePrice, 95, 'Pacifica maps its p/a fields to price and size for the short average');
+  assert(pacifica.futuresComplete, 'Pacifica book covers the requested short size');
+  assert(pacificaUrl.includes('/api/v1/book?symbol=BTC'), 'Pacifica requests the public book endpoint using its bare ticker');
 
   console.log('ALL PASS');
 }
