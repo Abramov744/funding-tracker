@@ -108,11 +108,13 @@ const els = {
   orderBookStatus: document.getElementById('orderBookStatus'),
   orderBookResult: document.getElementById('orderBookResult'),
   orderBookFuturesExchange: document.getElementById('orderBookFuturesExchange'),
+  orderBookFuturesPriceLabel: document.getElementById('orderBookFuturesPriceLabel'),
   orderBookFuturesPrice: document.getElementById('orderBookFuturesPrice'),
   orderBookSpotExchange: document.getElementById('orderBookSpotExchange'),
   orderBookSpotPrice: document.getElementById('orderBookSpotPrice'),
   orderBookPnl: document.getElementById('orderBookPnl'),
   orderBookPnlNote: document.getElementById('orderBookPnlNote'),
+  orderBookModeNote: document.getElementById('orderBookModeNote'),
   mobileSortKey: document.getElementById('mobileSortKey'),
   mobileSortDir: document.getElementById('mobileSortDir'),
   favToggle: document.getElementById('favToggle'),
@@ -1232,6 +1234,7 @@ function clearOrderBookResult() {
   els.orderBookStatus.hidden = true;
   els.orderBookStatus.textContent = '';
   els.orderBookFuturesExchange.textContent = '';
+  els.orderBookFuturesPriceLabel.textContent = 'Средняя цена продажи шорта';
   els.orderBookFuturesPrice.textContent = '—';
   els.orderBookFuturesPrice.classList.remove('positive', 'negative');
   els.orderBookSpotExchange.textContent = '';
@@ -1240,6 +1243,8 @@ function clearOrderBookResult() {
   els.orderBookPnl.textContent = '—';
   els.orderBookPnl.classList.remove('positive', 'negative');
   els.orderBookPnlNote.textContent = '';
+  els.orderBookModeNote.textContent = '';
+  els.orderBookModeNote.hidden = true;
 }
 
 async function checkOrderBook() {
@@ -1281,10 +1286,23 @@ async function checkOrderBook() {
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
     state.orderBookResult = data;
-    els.orderBookFuturesExchange.textContent = `${row.exchangeLabel} · ${row.symbol}`;
+    const isIndicativeQuote = data.futuresPricingMode === 'indicative-rfq';
+    els.orderBookFuturesExchange.textContent = `${row.exchangeLabel} · ${row.symbol}${isIndicativeQuote ? ' · RFQ' : ''}`;
+    els.orderBookFuturesPriceLabel.textContent = isIndicativeQuote
+      ? 'Ориентировочная цена продажи шорта'
+      : 'Средняя цена продажи шорта';
     els.orderBookFuturesPrice.textContent = fmtPrice(data.futuresAveragePrice);
     els.orderBookSpotExchange.textContent = `${venue.name} · ${row.baseAsset}/${venue.quote}`;
     els.orderBookSpotPrice.textContent = fmtPrice(data.spotAveragePrice);
+
+    if (isIndicativeQuote) {
+      const quoteTime = data.futuresQuoteUpdatedAt ? new Date(data.futuresQuoteUpdatedAt) : null;
+      const updatedText = quoteTime && Number.isFinite(quoteTime.getTime())
+        ? ` Котировка обновлена: ${quoteTime.toLocaleString()}.`
+        : '';
+      els.orderBookModeNote.textContent = `Variational не публикует стакан: цена взята из ориентировочной RFQ-котировки${data.futuresQuoteTier ? ` (${data.futuresQuoteTier}, размерный уровень в USDC)` : ''}. Точная цена исполнения может отличаться.${updatedText}`;
+      els.orderBookModeNote.hidden = false;
+    }
 
     const fullyFilled = data.futuresComplete && data.spotComplete;
     if (fullyFilled && data.spotAveragePrice > data.futuresAveragePrice) {
@@ -1299,7 +1317,7 @@ async function checkOrderBook() {
       const sign = pnlUsdt > 0 ? '+' : '';
       els.orderBookPnl.textContent = `${sign}${pnlUsdt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
       if (pnlClass) els.orderBookPnl.classList.add(pnlClass);
-      els.orderBookPnlNote.textContent = `На объём ${data.baseQuantity.toLocaleString('en-US', { maximumFractionDigits: 8 })} ${row.baseAsset}`;
+      els.orderBookPnlNote.textContent = `На объём ${data.baseQuantity.toLocaleString('en-US', { maximumFractionDigits: 8 })} ${row.baseAsset}${isIndicativeQuote ? '; оценка по RFQ-котировке' : ''}`;
     } else {
       els.orderBookPnl.textContent = 'Недостаточно глубины';
       els.orderBookPnlNote.textContent = 'Расчёт доступен, когда оба стакана покрывают весь объём.';

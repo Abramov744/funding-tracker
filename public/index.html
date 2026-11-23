@@ -269,7 +269,7 @@
         <div id="orderBookResult" class="orderbook-result" hidden>
           <div class="orderbook-result-leg">
             <span id="orderBookFuturesExchange" class="chart-price-label"></span>
-            <span class="chart-price-label">Средняя цена продажи шорта</span>
+            <span id="orderBookFuturesPriceLabel" class="chart-price-label">Средняя цена продажи шорта</span>
             <strong id="orderBookFuturesPrice" class="chart-price-value">—</strong>
           </div>
           <div class="orderbook-result-leg">
@@ -277,6 +277,7 @@
             <span class="chart-price-label">Средняя цена покупки спота</span>
             <strong id="orderBookSpotPrice" class="chart-price-value">—</strong>
           </div>
+          <p id="orderBookModeNote" class="orderbook-mode-note" hidden></p>
           <div class="orderbook-pnl" id="orderBookPnlBox">
             <span class="chart-price-label">Спред при открытии (без комиссий/фандинга; USD/USDC ≈ USDT)</span>
             <strong id="orderBookPnl" class="chart-price-value">—</strong>

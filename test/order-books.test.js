@@ -18,6 +18,18 @@ function response(data) {
 async function main() {
   let futuresBids = [['100', '1'], ['90', '1']];
   global.fetch = async (url) => {
+    if (String(url).includes('/metadata/v2/stats')) {
+      return response({ listings: [{
+        ticker: 'BTC-PERP',
+        contract_type: 'perpetual',
+        quotes: {
+          updated_at: '2026-11-23T10:00:00Z',
+          size_1k: { bid: '99', ask: '101' },
+          size_100k: { bid: '97', ask: '103' },
+          size_1m: { bid: '95', ask: '105' },
+        },
+      }] });
+    }
     if (String(url).includes('/fapi/v1/depth')) {
       return response({ bids: futuresBids, asks: [['101', '1']] });
     }
@@ -198,6 +210,35 @@ async function main() {
     closeTo(result.futuresAveragePrice, 95, `${futuresExchange} leaves BTC prices unscaled`);
     assert(result.futuresComplete, `${futuresExchange} covers the requested short size`);
   }
+
+  const variational = await checkOrderBook({
+    futuresExchange: 'variational',
+    futuresSymbol: 'BTC-PERP',
+    spotExchangeId: 'mexc',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 5_000,
+  });
+  closeTo(variational.futuresAveragePrice, 97, 'Variational selects the quote tier covering the requested size');
+  assert(variational.futuresComplete, 'Variational indicative quote covers the requested short size');
+  assert(variational.futuresPricingMode === 'indicative-rfq', 'Variational quote is identified as indicative RFQ pricing');
+  assert(variational.futuresQuoteTier === 'size_100k', 'Variational response records the selected size tier');
+  assert(variational.futuresQuoteUpdatedAt === '2026-11-23T10:00:00Z', 'Variational response keeps quote freshness metadata');
+
+  let unsupportedVariationalSize = false;
+  try {
+    await checkOrderBook({
+      futuresExchange: 'variational',
+      futuresSymbol: 'BTC-PERP',
+      spotExchangeId: 'mexc',
+      base: 'BTC',
+      quote: 'USDT',
+      sizeUsdt: 2_000_000,
+    });
+  } catch (err) {
+    unsupportedVariationalSize = /котировку подходящего размера/.test(err.message);
+  }
+  assert(unsupportedVariationalSize, 'Variational rejects amounts larger than its published quote tiers');
 
   console.log('ALL PASS');
 }
