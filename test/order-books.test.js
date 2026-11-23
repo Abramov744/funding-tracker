@@ -17,7 +17,18 @@ function response(data) {
 
 async function main() {
   let futuresBids = [['100', '1'], ['90', '1']];
+  let paradexUrl = '';
   global.fetch = async (url) => {
+    if (String(url).includes('/v1/orderbook/')) {
+      paradexUrl = String(url);
+      return response({
+        market: 'BTC-USD-PERP',
+        last_updated_at: 1795435200000,
+        seq_no: 123,
+        bids: [['100', '1'], ['90', '1']],
+        asks: [['101', '1']],
+      });
+    }
     if (String(url).includes('/metadata/v2/stats')) {
       return response({ listings: [{
         ticker: 'BTC-PERP',
@@ -239,6 +250,18 @@ async function main() {
     unsupportedVariationalSize = /котировку подходящего размера/.test(err.message);
   }
   assert(unsupportedVariationalSize, 'Variational rejects amounts larger than its published quote tiers');
+
+  const paradex = await checkOrderBook({
+    futuresExchange: 'paradex',
+    futuresSymbol: 'BTC-USD-PERP',
+    spotExchangeId: 'mexc',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(paradex.futuresAveragePrice, 95, 'Paradex parses public bid levels and calculates the short average');
+  assert(paradex.futuresComplete, 'Paradex book covers the requested short size');
+  assert(paradexUrl.includes('/v1/orderbook/BTC-USD-PERP?depth=100'), 'Paradex requests the public orderbook snapshot with depth');
 
   console.log('ALL PASS');
 }
