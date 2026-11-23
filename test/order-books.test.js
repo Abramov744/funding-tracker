@@ -19,6 +19,7 @@ async function main() {
   let futuresBids = [['100', '1'], ['90', '1']];
   let paradexUrl = '';
   let pacificaUrl = '';
+  let orderlyUrl = '';
   global.fetch = async (url) => {
     if (String(url).includes('/api/v1/book?symbol=')) {
       pacificaUrl = String(url);
@@ -36,7 +37,7 @@ async function main() {
         code: null,
       });
     }
-    if (String(url).includes('/v1/orderbook/')) {
+    if (String(url).includes('api.prod.paradex.trade/v1/orderbook/')) {
       paradexUrl = String(url);
       return response({
         market: 'BTC-USD-PERP',
@@ -44,6 +45,13 @@ async function main() {
         seq_no: 123,
         bids: [['100', '1'], ['90', '1']],
         asks: [['101', '1']],
+      });
+    }
+    if (String(url).includes('api.orderly.org/v1/orderbook/')) {
+      orderlyUrl = String(url);
+      return response({
+        success: true,
+        data: { symbol: 'PERP_BTC_USDC', bids: [['100', '1'], ['90', '1']], asks: [['101', '1']] },
       });
     }
     if (String(url).includes('/metadata/v2/stats')) {
@@ -291,6 +299,18 @@ async function main() {
   closeTo(pacifica.futuresAveragePrice, 95, 'Pacifica maps its p/a fields to price and size for the short average');
   assert(pacifica.futuresComplete, 'Pacifica book covers the requested short size');
   assert(pacificaUrl.includes('/api/v1/book?symbol=BTC'), 'Pacifica requests the public book endpoint using its bare ticker');
+
+  const orderly = await checkOrderBook({
+    futuresExchange: 'orderly',
+    futuresSymbol: 'BTC',
+    spotExchangeId: 'mexc',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(orderly.futuresAveragePrice, 95, 'Orderly parses public bid levels and calculates the short average');
+  assert(orderly.futuresComplete, 'Orderly book covers the requested short size');
+  assert(orderlyUrl.includes('/v1/orderbook/PERP_BTC_USDC?max_level=100'), 'Orderly requests the public orderbook snapshot using its full perpetual symbol');
 
   console.log('ALL PASS');
 }
