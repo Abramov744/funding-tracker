@@ -20,7 +20,20 @@ async function main() {
   let paradexUrl = '';
   let pacificaUrl = '';
   let orderlyUrl = '';
+  let blofinFuturesUrl = '';
+  let blofinSpotUrl = '';
   global.fetch = async (url) => {
+    if (String(url).includes('/api/v1/spot/market/books?instType=SPOT')) {
+      blofinSpotUrl = String(url);
+      return response({ code: '0', data: [{ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] }] });
+    }
+    if (String(url).includes('/api/v1/market/books?instId=')) {
+      blofinFuturesUrl = String(url);
+      return response({ code: '0', data: [{ bids: [['100', '100'], ['90', '100']], asks: [['101', '100']] }] });
+    }
+    if (String(url).includes('/api/v1/market/instruments?instId=')) {
+      return response({ code: '0', data: [{ instId: 'BTC-USDT', contractType: 'linear', quoteCurrency: 'USDT', contractValue: '0.01' }] });
+    }
     if (String(url).includes('/api/v1/book?symbol=')) {
       pacificaUrl = String(url);
       return response({
@@ -311,6 +324,21 @@ async function main() {
   closeTo(orderly.futuresAveragePrice, 95, 'Orderly parses public bid levels and calculates the short average');
   assert(orderly.futuresComplete, 'Orderly book covers the requested short size');
   assert(orderlyUrl.includes('/v1/orderbook/PERP_BTC_USDC?max_level=100'), 'Orderly requests the public orderbook snapshot using its full perpetual symbol');
+
+  const blofinBook = await checkOrderBook({
+    futuresExchange: 'blofin',
+    futuresSymbol: 'BTC-USDT',
+    spotExchangeId: 'blofin',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(blofinBook.baseQuantity, 2, 'BloFin converts linear futures contract counts into base-asset quantity');
+  closeTo(blofinBook.futuresAveragePrice, 95, 'BloFin computes the futures short average from bids');
+  closeTo(blofinBook.spotAveragePrice, 94.5, 'BloFin parses spot asks and computes the average purchase price');
+  assert(blofinBook.futuresComplete && blofinBook.spotComplete, 'BloFin books fully cover the requested amount');
+  assert(blofinFuturesUrl.includes('/market/books?instId=BTC-USDT&size=100'), 'BloFin futures check requests 100 book levels');
+  assert(blofinSpotUrl.includes('/spot/market/books?instType=SPOT&instId=BTC-USDT&size=100'), 'BloFin spot check requests public spot depth');
 
   console.log('ALL PASS');
 }
