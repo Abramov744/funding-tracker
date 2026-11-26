@@ -24,7 +24,10 @@ const exOne = {
     return [{ exchange: 'ex1', symbol: 'BTC', fundingRate: 0.001, intervalHours: 8, nextFundingTime: null, price: 90000 }];
   },
   async fetchHistory(symbol, limit, intervalHours) {
-    return buildHistory(8, 0.001, 720);
+    const hourly = buildHistory(1, 0.000125, 720)
+      .filter((point) => point.time < now - 7 * HOUR)
+      .map((point) => ({ ...point, intervalHours: 1 }));
+    return [...hourly, { rate: 0.001, time: now, intervalHours: 8 }];
   },
 };
 
@@ -55,6 +58,8 @@ const cache = require(path.join(__dirname, '..', 'lib', 'cache.js'));
   const state = cache.getState();
 
   console.log(`state.rows: ${state.rows.length}`);
+  const ex1Row = state.rows.find((r) => r.exchange === 'ex1');
+  if (Math.abs(ex1Row.avgAprPct - 109.5) > 1e-9) throw new Error('FAIL: APR should use historical intervals');
   const ex2Row = state.rows.find((r) => r.exchange === 'ex2');
   if (!ex2Row) throw new Error('FAIL: ex2 (negative-rate) row missing from state.rows entirely');
   // The key behavioral change: a negative-rate row now gets real history
@@ -69,6 +74,7 @@ const cache = require(path.join(__dirname, '..', 'lib', 'cache.js'));
   if (row.shortExchange !== 'ex1' || row.longExchange !== 'ex2') {
     throw new Error(`FAIL: expected short=ex1/long=ex2, got short=${row.shortExchange}/long=${row.longExchange}`);
   }
+  if (Math.abs(row.avgAprPct - 197.1) > 1e-9) throw new Error('FAIL: spread APR should use historical intervals');
   if (row.spreadAprPct <= 0) throw new Error(`FAIL: spreadAprPct should be positive, got ${row.spreadAprPct}`);
 
   console.log('ALL PASS');

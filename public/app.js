@@ -188,7 +188,7 @@ function signClass(v) {
 // differs by exchange/coin (1h/4h/8h) — this converts to actual calendar days.
 function historyDays(row) {
   if (!row.intervalHours) return 0;
-  return (row.periods * row.intervalHours) / 24;
+  return (row.historyHours ?? row.periods * row.intervalHours) / 24;
 }
 
 // "190" -> "190 (63.3 дн.)"
@@ -920,7 +920,8 @@ function updateAprWindowStats() {
 
   const avgRate = windowed.reduce((sum, h) => sum + h.rate, 0) / windowed.length;
   const positiveRatio = windowed.filter((h) => h.rate > 0).length / windowed.length;
-  const avgAprPct = annualizedPctClient(avgRate, state.chartIntervalHours);
+  const historyHours = windowed.reduce((sum, h) => sum + (h.intervalHours || state.chartIntervalHours), 0);
+  const avgAprPct = annualizedPctClient(avgRate, historyHours / windowed.length);
 
   els.chartWindowApr.textContent = fmtAprPct(avgAprPct);
   els.chartWindowApr.className =
