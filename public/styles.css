@@ -224,17 +224,6 @@ header h1 {
   min-width: 120px;
 }
 
-.ex-dropdown-group-all {
-  display: block;
-  columns: 2;
-  column-gap: 28px;
-  min-width: 300px;
-}
-
-.ex-dropdown-group-all label {
-  break-inside: avoid;
-}
-
 .ex-dropdown-group-title {
   color: var(--muted);
   font-size: 11px;
@@ -907,11 +896,6 @@ footer {
   .ex-dropdown-columns {
     flex-direction: column;
     gap: 12px;
-  }
-
-  .ex-dropdown-group-all {
-    columns: 1;
-    min-width: 0;
   }
 
   .ex-dropdown-group label {
