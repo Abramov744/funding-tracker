@@ -22,7 +22,17 @@ async function main() {
   let orderlyUrl = '';
   let blofinFuturesUrl = '';
   let blofinSpotUrl = '';
+  let xtFuturesUrl = '';
+  let xtSpotUrl = '';
   global.fetch = async (url) => {
+    if (String(url).includes('sapi.xt.com/v4/public/depth')) {
+      xtSpotUrl = String(url);
+      return response({ rc: 0, result: { bids: [['89', '2']], asks: [['90', '2'], ['99', '2']] } });
+    }
+    if (String(url).includes('/cg/orderbook?')) {
+      xtFuturesUrl = String(url);
+      return response({ ticker_id: 'BTC-USDT', bids: [['100', '1'], ['90', '1']], asks: [['101', '1']] });
+    }
     if (String(url).includes('/api/v1/spot/market/books?instType=SPOT')) {
       blofinSpotUrl = String(url);
       return response({ code: '0', data: [{ bids: [['89', '1']], asks: [['90', '1'], ['99', '1']] }] });
@@ -339,6 +349,20 @@ async function main() {
   assert(blofinBook.futuresComplete && blofinBook.spotComplete, 'BloFin books fully cover the requested amount');
   assert(blofinFuturesUrl.includes('/market/books?instId=BTC-USDT&size=100'), 'BloFin futures check requests 100 book levels');
   assert(blofinSpotUrl.includes('/spot/market/books?instType=SPOT&instId=BTC-USDT&size=100'), 'BloFin spot check requests public spot depth');
+
+  const xtBook = await checkOrderBook({
+    futuresExchange: 'xt',
+    futuresSymbol: 'BTC_USDT',
+    spotExchangeId: 'xt',
+    base: 'BTC',
+    quote: 'USDT',
+    sizeUsdt: 190,
+  });
+  closeTo(xtBook.futuresAveragePrice, 95, 'XT.COM maps public futures depth into short fills');
+  closeTo(xtBook.spotAveragePrice, 90, 'XT.COM maps public spot asks into purchase fills');
+  assert(xtBook.futuresComplete && xtBook.spotComplete, 'XT.COM spot and futures books cover the requested amount');
+  assert(xtFuturesUrl.includes('symbol=btc-usdt&level=200'), 'XT.COM requests its public futures order book');
+  assert(xtSpotUrl.includes('symbol=btc_usdt&limit=100'), 'XT.COM requests its public spot order book');
 
   console.log('ALL PASS');
 }
